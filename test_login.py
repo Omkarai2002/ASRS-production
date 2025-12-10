@@ -1,5 +1,5 @@
 from app.auth import authenticate_user
-from app.models import engine, User
+from app.auth.models import engine, User
 from sqlmodel import Session, select
 
 print("Testing login...")

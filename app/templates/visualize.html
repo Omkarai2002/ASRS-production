@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Visualize{% endblock %}
+{% block content %}
+<h4>Visualize Reports</h4>
+
+{% if not reports %}
+  <div class="alert alert-info">No reports found for visualization.</div>
+{% else %}
+  {% for report in reports %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <strong>{{ report[1] }}</strong> - {{ report[2] }}
+      </div>
+      <div class="card-body">
+        {% if report.details %}
+          <div class="row">
+            {% for img in report.details %}
+              <div class="col-md-3 mb-2">
+                <img src="{{ img.url }}" class="img-fluid rounded">
+                <div class="mt-1">
+                  <small>Unique ID: {{ img.unique_id }}</small><br>
+                  <small>VIN: {{ img.vin_no }}</small>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="alert alert-warning">No images found for this report.</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}
