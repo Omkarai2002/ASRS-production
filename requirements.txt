@@ -1,0 +1,8 @@
+fastapi 
+uvicorn 
+sqlmodel 
+bcrypt==4.0.1
+Jinja2 
+python-multipart 
+aiofiles
+itsdangerous
