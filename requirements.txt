@@ -12,3 +12,6 @@ boto3
 google-cloud-vision 
 ultralytics 
 passlib
+qrcode
+reportlab
+pillow

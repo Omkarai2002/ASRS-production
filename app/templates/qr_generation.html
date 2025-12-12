@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generation - ASRS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+
+        .qr-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .qr-header {
+            background: white;
+            border-radius: 15px 15px 0 0;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .qr-header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .qr-header p {
+            color: #999;
+            font-size: 15px;
+        }
+
+        .qr-content {
+            background: white;
+            padding: 40px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section {
+            margin-bottom: 40px;
+        }
+
+        .form-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .info-box {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .vin-item {
+            background: #f5f7fa;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .vin-item-text {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .vin-item-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .vin-item-btn:hover {
+            background: #ff5252;
+        }
+
+        .vins-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+
+        .qr-footer {
+            background: white;
+            border-radius: 0 0 15px 15px;
+            padding: 20px 40px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            color: #999;
+            font-size: 13px;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+
+        @media (max-width: 768px) {
+            .qr-header {
+                padding: 30px 20px;
+            }
+
+            .qr-content {
+                padding: 30px 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="qr-container">
+        <div class="qr-header">
+            <h1>QR Code Generation</h1>
+            <p>Generate professional QR codes for your VIN numbers</p>
+        </div>
+
+        <div class="qr-content">
+            {% if success %}
+                <div class="success-message">{{ success }}</div>
+            {% endif %}
+
+            <div class="form-section">
+                <h2 class="form-title">Single VIN Generation</h2>
+                
+                <div class="info-box">
+                    Enter a single VIN number and generate a PDF QR code
+                </div>
+
+                <form method="post" action="/qr/generate" id="singleVinForm">
+                    <div class="form-group">
+                        <label for="vin_no">VIN Number</label>
+                        <input 
+                            type="text" 
+                            id="vin_no" 
+                            name="vin_no" 
+                            placeholder="e.g., 1HGCV41JXMN109186"
+                            maxlength="17"
+                            required
+                        />
+                    </div>
+
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">Generate QR Code</button>
+                    </div>
+                </form>
+            </div>
+
+            <div style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
+                <div class="form-section">
+                    <h2 class="form-title">Bulk VIN Generation</h2>
+                    
+                    <div class="info-box">
+                        📦 Enter multiple VIN numbers (one per line) to generate QR codes in bulk
+                    </div>
+
+                    <form method="post" action="/qr/generate-bulk" id="bulkVinForm">
+                        <div class="form-group">
+                            <label for="vins">VIN Numbers (one per line)</label>
+                            <textarea 
+                                id="vins" 
+                                name="vins" 
+                                placeholder="1HGCV41JXMN109186&#10;2HGCV41JXMN109187&#10;3HGCV41JXMN109188"
+                                required
+                            ></textarea>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" class="btn btn-primary">Generate Bulk QR Codes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="qr-footer">
+            All QR codes are generated securely and stored temporarily
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('singleVinForm').addEventListener('submit', function(e) {
+            const vin = document.getElementById('vin_no').value.trim();
+            
+            if (vin.length !== 4) {
+                e.preventDefault();
+                alert('VIN number must be exactly 17 characters');
+            }
+        });
+
+        document.getElementById('bulkVinForm').addEventListener('submit', function(e) {
+            const vins = document.getElementById('vins').value.trim();
+            
+            if (!vins) {
+                e.preventDefault();
+                alert('Please enter at least one VIN number');
+            }
+        });
+    </script>
+</body>
+</html>

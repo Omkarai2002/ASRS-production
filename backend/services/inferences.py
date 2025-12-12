@@ -1,45 +1,79 @@
 # backend/services/inferences.py
 
+import os
 from backend.services.google_ocr import OCRClient
 from backend.services.annotations_parser import AnnotationsParser
-from backend.services.data_manager import get_record, upload_result
 from backend.services.json_result import build_result
 from backend.services.s3_operator import upload_images
 from backend.services.detection import detect_vehicle
-import os
+from backend.models.inference import Inference
+from backend.services.data_manager import upload_result
 
 ocr_client = OCRClient()
 parser = AnnotationsParser()
+
 
 def process_single_image(image_path):
     """
     Process a single image:
     - Run OCR
-    - Parse unique IDs
-    - Get records from DB
+    - Parse Unique IDs
     - Detect vehicle
-    - Build final result
+    - Build final result JSON
     """
     annotations = ocr_client.get_annotations(image_path)
     unique_ids = parser.get_unique_ids(annotations)
-    records = [get_record(unique_id[0]) for unique_id in unique_ids]
-    detection = detect_vehicle(image_path, records)
+
+    # No DB lookup anymore (get_record deleted)
+    detection = detect_vehicle(image_path, unique_ids)
+
     image_name = os.path.basename(image_path)
-    return build_result(image_name, records, detection)
+
+    return build_result(image_name, unique_ids, detection)
+
 
 def get_inferences(report_dir, report_id):
     """
-    Process all images in a report directory:
-    - Upload images to S3
-    - Run inferences on each image
-    - Save results to database
+    Process all images:
+    - Run OCR + detection
+    - Upload to S3
+    - Save each result row in DB
     """
+
     for image_name in os.listdir(report_dir):
-        if image_name.lower().endswith((".jpg", ".png")):
-            image_path = os.path.join(report_dir, image_name)
-            # Process single image
-            result = process_single_image(image_path)
-            # Upload to S3
-            s3_key, s3_url = upload_images(image_path)
-            # Save result in DB
-            upload_result(result, report_id, s3_url)
+        if not image_name.lower().endswith((".jpg", ".png", ".jpeg")):
+            continue
+
+        image_path = os.path.join(report_dir, image_name)
+
+        # 1. Process the image
+        results = process_single_image(image_path)  # Returns a LIST of dicts
+
+        # results is a list from build_result() like:
+        # [
+        #   {
+        #     "IMG_NAME": "",
+        #     "UNIQUE_ID": "",
+        #     "QUANTITY": "",
+        #     "VIN_NO": "",
+        #     "EXCLUSION": ""
+        #   },
+        #   ...
+        # ]
+
+        # 2. Upload to S3
+        s3_key, s3_url = upload_images(image_path)
+
+        # 3. Create Inference objects for each result and save in DB
+        for result in results:
+            inference = Inference(
+                report_id=report_id,
+                image_name=result.get("IMG_NAME", ""),
+                unique_id=result.get("UNIQUE_ID", ""),
+                quantity=result.get("QUANTITY", 1),
+                vin_no=result.get("VIN_NO", ""),
+                exclusion=result.get("EXCLUSION", ""),
+                s3_obj_url=s3_url
+            )
+            
+            upload_result(inference)

@@ -3,8 +3,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import os
 import uuid
-from services.data_manager import create_report
-from services.inference import get_inferences
+from backend.services.data_manager import create_report
+from backend.services.inferences import get_inferences
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

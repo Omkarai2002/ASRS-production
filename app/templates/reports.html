@@ -1,49 +1,486 @@
 {% extends "base.html" %}
-{% block content %}
-<h4>Reports</h4>
+{% block title %}Reports Management{% endblock %}
 
-<!-- Create Report Form -->
-<div class="card p-3 mb-4">
+{% block content %}
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  .reports-container {
+    padding: 30px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+  }
+
+  .page-header {
+    margin-bottom: 40px;
+  }
+
+  .page-header h1 {
+    color: #2c3e50;
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+
+  .page-header p {
+    color: #7f8c8d;
+    font-size: 16px;
+  }
+
+  .create-report-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+
+  .form-title {
+    color: #2c3e50;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    display: block;
+    color: #34495e;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 15px;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #ecf0f1;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+
+  .file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+    width: 100%;
+  }
+
+  .file-input-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 30px;
+    border: 2px dashed #667eea;
+    border-radius: 8px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+    transition: all 0.3s ease;
+  }
+
+  .file-input-label:hover {
+    border-color: #764ba2;
+    background: linear-gradient(135deg, #e8ebff 0%, #dfe6ff 100%);
+  }
+
+  .file-input-label input[type="file"] {
+    display: none;
+  }
+
+  .file-input-icon {
+    font-size: 28px;
+  }
+
+  .file-input-text {
+    color: #667eea;
+    font-weight: 600;
+  }
+
+  .file-input-label:hover .file-input-text {
+    color: #764ba2;
+  }
+
+  .btn {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 15px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .search-section {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    flex: 1;
+    min-width: 250px;
+    padding: 12px 20px;
+    border: 2px solid white;
+    border-radius: 8px;
+    font-size: 14px;
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+
+  .reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+  }
+
+  .report-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-top: 5px solid #667eea;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .report-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    pointer-events: none;
+  }
+
+  .report-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+  }
+
+  .report-card-header {
+    position: relative;
+    z-index: 1;
+  }
+
+  .report-id {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .report-name {
+    color: #2c3e50;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    word-wrap: break-word;
+  }
+
+  .report-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ecf0f1;
+  }
+
+  .report-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #7f8c8d;
+    font-size: 14px;
+  }
+
+  .report-meta-item strong {
+    color: #2c3e50;
+  }
+
+  .report-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .stat-box {
+    background: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%);
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 3px solid #667eea;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #667eea;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-top: 5px;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 10px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .btn-sm {
+    padding: 8px 15px;
+    font-size: 13px;
+    flex: 1;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .btn-view {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-view:hover {
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-delete {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  .btn-delete:hover {
+    background: #f5c6cb;
+  }
+
+  .no-reports {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  }
+
+  .no-reports-icon {
+    font-size: 64px;
+    margin-bottom: 15px;
+  }
+
+  .no-reports-text {
+    color: #7f8c8d;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .filter-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .reports-container {
+      padding: 15px;
+    }
+
+    .page-header h1 {
+      font-size: 32px;
+    }
+
+    .reports-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .search-section {
+      flex-direction: column;
+    }
+
+    .search-input {
+      min-width: auto;
+    }
+  }
+</style>
+
+<div class="reports-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>📋 Reports Management</h1>
+    <p>Create, manage, and track all your inspection reports</p>
+  </div>
+
+  <!-- Create Report Section -->
+  <div class="create-report-section">
+    <div class="form-title">✨ Create New Report</div>
+    
     <form method="post" action="/reports/create" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label class="form-label">Report Name</label>
-            <input type="text" name="report_name" class="form-control" required>
+      <div class="form-group">
+        <label class="form-label">Report Name</label>
+        <input type="text" name="report_name" class="form-control" placeholder="e.g., Inspection 2025-12-11" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Upload Images</label>
+        <div class="file-input-wrapper">
+          <label class="file-input-label">
+            <span class="file-input-icon">📁</span>
+            <span>
+              <span class="file-input-text">Click to upload images</span>
+              <div style="font-size: 12px; color: #95a5a6;">or drag and drop</div>
+            </span>
+            <input type="file" name="files" multiple required id="fileInput" onchange="updateFileName()">
+          </label>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Upload Images</label>
-            <input type="file" name="files" class="form-control" multiple required>
-        </div>
-        <button class="btn btn-primary">Create Report</button>
+        <div id="fileName" style="margin-top: 10px; color: #667eea; font-weight: 600; display: none;"></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Create Report</button>
     </form>
+  </div>
+
+  <!-- Search and Filter -->
+  <div class="search-section">
+    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search reports by name..." onkeyup="filterReports()">
+  </div>
+
+  <!-- Reports Grid -->
+  <div class="reports-grid" id="reportsGrid">
+    {% if not reports %}
+      <div class="no-reports">
+        <div class="no-reports-icon">📭</div>
+        <div class="no-reports-text">No reports yet. Create your first report!</div>
+      </div>
+    {% else %}
+      {% for report in reports %}
+        <div class="report-card" data-report-name="{{ report[1] | lower }}">
+          <div class="report-id">Report #{{ report[0] }}</div>
+          <div class="report-name">{{ report[1] }}</div>
+          
+          <div class="report-meta">
+            <div class="report-meta-item">
+              <span></span>
+              <strong>{{ report[2] }}</strong>
+            </div>
+          </div>
+
+          <div class="report-stats">
+            <div class="stat-box">
+              <div class="stat-value">{{ report[3] or 0 }}</div>
+              <div class="stat-label">Items</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">✓</div>
+              <div class="stat-label">Ready</div>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <a href="/visualize?report={{ report[0] }}" class="btn btn-view">👁️ View</a>
+            <form method="post" action="/reports/{{ report[0] }}/delete" style="flex: 1; margin: 0;">
+              <button type="submit" class="btn btn-sm btn-delete" onclick="return confirm('Are you sure?')">🗑️ Delete</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
 </div>
 
-<!-- List Reports -->
-{% if not reports %}
-    <div class="alert alert-info">No reports found</div>
-{% else %}
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in reports %}
-                <tr>
-                    <td>{{ r[0] }}</td>
-                    <td>{{ r[1] }}</td>
-                    <td>{{ r[2].strftime('%Y-%m-%d') }}</td>
-                    <td>
-                        <form method="post" action="/reports/{{ r[0] }}/delete" style="display:inline">
-                            <button class="btn btn-sm btn-danger">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% endif %}
+<script>
+  function updateFileName() {
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDiv = document.getElementById('fileName');
+    
+    if (fileInput.files.length > 0) {
+      const fileCount = fileInput.files.length;
+      fileNameDiv.textContent = `✓ ${fileCount} file(s) selected`;
+      fileNameDiv.style.display = 'block';
+    } else {
+      fileNameDiv.style.display = 'none';
+    }
+  }
+
+  function filterReports() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const reportCards = document.querySelectorAll('.report-card');
+
+    reportCards.forEach(card => {
+      const reportName = card.getAttribute('data-report-name');
+      if (reportName.includes(searchTerm)) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+</script>
+
 {% endblock %}

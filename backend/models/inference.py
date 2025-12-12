@@ -1,15 +1,20 @@
-# backend/models/inference.py
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from backend.database import Base
 
 class Inference(Base):
     __tablename__ = "inferences"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_id = Column(Integer, nullable=False)
-    image_name = Column(String(200), nullable=False)
-    unique_id = Column(String(100), nullable=True)
-    quantity = Column(Integer, default=1)
-    vin_no = Column(String(50), nullable=True)
-    exclusion = Column(String(100), default="")
-    s3_url = Column(String(500), nullable=True)
+    unique_id = Column(String(7), nullable=True)  # char(7)
+    image_name = Column(String(255), nullable=True)
+    vin_no = Column(String(25), nullable=True)
+    quantity = Column(Integer, nullable=True)
+    exclusion = Column(String(255), nullable=True)
+
+    createdAt = Column(DateTime, nullable=True)
+    updatedAt = Column(DateTime, nullable=True)
+
+    report_id = Column(Integer, nullable=True)
+    is_non_confirmity = Column(Boolean, default=False)
+
+    s3_obj_url = Column(String(255), nullable=True)  # correct name
