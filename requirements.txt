@@ -15,3 +15,5 @@ passlib
 qrcode
 reportlab
 pillow
+openpyxl
+regex

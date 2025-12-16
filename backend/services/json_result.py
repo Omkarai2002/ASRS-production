@@ -25,9 +25,13 @@ def build_result(image_name, records, detection):
         tmp['IMG_NAME'] = image_name
         
         if record:
-            tmp['UNIQUE_ID'] = record[1]
+            # record is a tuple: (unique_id, text_block)
+            # record[0] = unique_id
+            # record[1] = text_block (full text where ID was found)
+            tmp['UNIQUE_ID'] = record.unique_id
             tmp['QUANTITY'] = 1
-            tmp['VIN_NO'] = record[2]
+            # VIN_NO is not extracted yet - set to empty for now
+            tmp['VIN_NO'] = record.vin_no
 
         final_output.append(tmp)
     

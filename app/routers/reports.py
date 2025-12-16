@@ -1,25 +1,40 @@
 from fastapi import APIRouter, Request, Form, UploadFile, File, BackgroundTasks
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.encoders import jsonable_encoder
-from backend.database import SessionLocal
-from backend.models.report import Report
-from backend.models.inference import Inference
-from backend.services.data_manager import create_report, get_reports, delete_report
-from backend.services.inferences import get_inferences
 import os
 from datetime import datetime
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from backend.database import SessionLocal
+from backend.models.report import Report
+from backend.models.inference import Inference
+from backend.services.data_manager import create_report
+from backend.services.inferences import get_inferences
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)  # Ensure folder exists
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+def get_db() -> Session:
+    """Database session context manager"""
+    db = SessionLocal()
+    return db
+
+
+def close_db(db: Session):
+    """Close database session"""
+    if db:
+        db.close()
+
 
 @router.get("/reports", response_class=HTMLResponse)
 def reports_page(request: Request, search: str = None):
-    db = SessionLocal()
+    """Display all reports with search capability"""
+    db = get_db()
     try:
         # Get all reports with their inference counts
         query = db.query(
@@ -33,20 +48,20 @@ def reports_page(request: Request, search: str = None):
         
         reports = query.all()
         
-        # Get unique dates for filtering
-        unique_dates = db.query(Report.createdAt).distinct().filter(
-            Report.createdAt.isnot(None)
-        ).order_by(Report.createdAt.desc()).all()
-        unique_dates = [str(d[0]) if d[0] else None for d in unique_dates if d[0]]
-        
         return templates.TemplateResponse("reports.html", {
             "request": request,
             "reports": reports,
-            "unique_dates": unique_dates,
             "search_query": search
         })
+    except Exception as e:
+        return templates.TemplateResponse(
+            "reports.html",
+            {"request": request, "reports": [], "error": str(e)},
+            status_code=500
+        )
     finally:
-        db.close()
+        close_db(db)
+
 
 @router.post("/reports/create")
 async def create_report_endpoint(
@@ -55,48 +70,72 @@ async def create_report_endpoint(
     report_name: str = Form(...),
     files: list[UploadFile] = File(...)
 ):
-    # Sanitize folder name
-    safe_name = "".join([c if c.isalnum() or c in (' ', '-', '_') else '_' for c in report_name]).strip()
-    report_dir = os.path.join(UPLOAD_DIR, safe_name)
-    os.makedirs(report_dir, exist_ok=True)
+    """Create a new report with file uploads"""
+    try:
+        if not report_name or not report_name.strip():
+            return RedirectResponse(url="/reports?error=Report name is required", status_code=303)
+        
+        if not files or len(files) == 0:
+            return RedirectResponse(url="/reports?error=At least one file is required", status_code=303)
 
-    # Save files
-    for file in files:
-        file_path = os.path.join(report_dir, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
+        # Sanitize folder name
+        safe_name = "".join([
+            c if c.isalnum() or c in (' ', '-', '_') else '_' 
+            for c in report_name
+        ]).strip()
+        
+        report_dir = os.path.join(UPLOAD_DIR, safe_name)
+        os.makedirs(report_dir, exist_ok=True)
 
-    # Create report in DB
-    report_id = create_report(report_name)
+        # Save uploaded files
+        for file in files:
+            if file.filename:
+                file_path = os.path.join(report_dir, file.filename)
+                with open(file_path, "wb") as f:
+                    f.write(await file.read())
 
-    # Process images in background
-    background_tasks.add_task(get_inferences, report_dir, report_id)
+        # Create report in database
+        report_id = create_report(report_name)
 
-    return RedirectResponse(url="/reports", status_code=303)
+        # Queue background image processing task
+        background_tasks.add_task(get_inferences, report_dir, report_id)
+
+        return RedirectResponse(url="/reports?success=Report created successfully", status_code=303)
+    except Exception as e:
+        return RedirectResponse(url=f"/reports?error=Error creating report: {str(e)}", status_code=303)
+
 
 @router.post("/reports/{report_id}/delete")
 def delete_report_endpoint(report_id: int):
-    db = SessionLocal()
+    """Delete a report and all associated inferences"""
+    db = get_db()
     try:
-        # Delete all inferences for this report
+        # Delete all inferences associated with this report
         db.query(Inference).filter(Inference.report_id == report_id).delete()
+        
         # Delete the report
         db.query(Report).filter(Report.id == report_id).delete()
+        
         db.commit()
+        return RedirectResponse(url="/reports?success=Report deleted successfully", status_code=303)
+    except Exception as e:
+        return RedirectResponse(url=f"/reports?error=Error deleting report: {str(e)}", status_code=303)
     finally:
-        db.close()
-    
-    return RedirectResponse(url="/reports", status_code=303)
+        close_db(db)
+
 
 @router.get("/api/report/{report_id}")
 def get_report_api(report_id: int):
-    db = SessionLocal()
+    """API endpoint to get report details with inferences"""
+    db = get_db()
     try:
         report = db.query(Report).filter(Report.id == report_id).first()
         if not report:
-            return {"error": "Report not found"}
+            return {"error": "Report not found", "status": 404}
         
-        inferences = db.query(Inference).filter(Inference.report_id == report_id).all()
+        inferences = db.query(Inference).filter(
+            Inference.report_id == report_id
+        ).order_by(Inference.id.desc()).all()
         
         return {
             "id": report.id,
@@ -114,5 +153,7 @@ def get_report_api(report_id: int):
                 for inf in inferences
             ]
         }
+    except Exception as e:
+        return {"error": str(e), "status": 500}
     finally:
-        db.close()
+        close_db(db)

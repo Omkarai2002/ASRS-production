@@ -1,19 +1,361 @@
 {% extends "base.html" %}
-{% block title %}Upload Report{% endblock %}
+{% block title %}Upload Report - ASRS{% endblock %}
+
 {% block content %}
-<h4>Upload Report</h4>
+<style>
+    .upload-page {
+        animation: fadeIn 0.5s ease-in;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
 
-<form method="post" action="/upload" enctype="multipart/form-data">
-  <div class="mb-3">
-    <label for="report_name" class="form-label">Report Name</label>
-    <input type="text" class="form-control" name="report_name" id="report_name" required>
-  </div>
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
 
-  <div class="mb-3">
-    <label for="images" class="form-label">Upload Images</label>
-    <input type="file" class="form-control" name="images" id="images" multiple required>
-  </div>
+    .page-header {
+        margin-bottom: 40px;
+        text-align: center;
+    }
 
-  <button type="submit" class="btn btn-primary">Upload</button>
-</form>
+    .page-header h1 {
+        color: #2c3e50;
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+
+    .page-header p {
+        color: #7f8c8d;
+        font-size: 16px;
+    }
+
+    .alert {
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-weight: 500;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border-left: 4px solid #28a745;
+    }
+
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border-left: 4px solid #f5576c;
+    }
+
+    .upload-section {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+
+    .form-title {
+        color: #2c3e50;
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 30px;
+    }
+
+    .form-label {
+        display: block;
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 10px;
+        font-size: 15px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .file-upload {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .file-upload-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        padding: 50px;
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        cursor: pointer;
+        background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+        transition: all 0.3s ease;
+    }
+
+    .file-upload-label:hover {
+        border-color: #764ba2;
+        background: linear-gradient(135deg, #e8ebff 0%, #dfe6ff 100%);
+    }
+
+    .file-upload input[type="file"] {
+        display: none;
+    }
+
+    .file-upload-text {
+        text-align: center;
+    }
+
+    .file-upload-text .main {
+        color: #667eea;
+        font-weight: 700;
+        font-size: 18px;
+    }
+
+    .file-upload-text .sub {
+        color: #95a5a6;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+
+    .file-count {
+        margin-top: 15px;
+        color: #667eea;
+        font-weight: 600;
+        display: none;
+        text-align: center;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 15px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        width: 100%;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .progress-container {
+        display: none;
+        margin-top: 30px;
+    }
+
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #ecf0f1;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    .progress-text {
+        color: #7f8c8d;
+        font-size: 14px;
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .upload-page {
+            padding: 20px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+        }
+
+        .upload-section {
+            padding: 20px;
+        }
+
+        .file-upload-label {
+            padding: 30px;
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="upload-page">
+    <!-- Alert Messages -->
+    {% if request.query_params.get('success') %}
+        <div class="alert alert-success">✓ {{ request.query_params.get('success') }}</div>
+    {% endif %}
+    {% if request.query_params.get('error') %}
+        <div class="alert alert-error">✗ {{ request.query_params.get('error') }}</div>
+    {% endif %}
+    {% if error %}
+        <div class="alert alert-error">✗ {{ error }}</div>
+    {% endif %}
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>📤 Upload Inspection Report</h1>
+        <p>Upload images to create a new inspection report</p>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+        <div class="form-title">✨ Create New Report</div>
+        
+        <form method="post" action="/upload" enctype="multipart/form-data" id="uploadForm" onsubmit="handleFormSubmit(event)">
+            <div class="form-group">
+                <label class="form-label">Report Name</label>
+                <input type="text" name="report_name" class="form-control" placeholder="e.g., Inspection Report - December 2025" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Upload Images</label>
+                <div class="file-upload">
+                    <label class="file-upload-label">
+                        <div style="font-size: 36px;">📁</div>
+                        <div class="file-upload-text">
+                            <div class="main">Click to upload or drag and drop</div>
+                            <div class="sub">PNG, JPG, JPEG up to 50MB</div>
+                        </div>
+                        <input type="file" name="files" multiple required id="fileInput" accept="image/*" onchange="updateFileCount()">
+                    </label>
+                </div>
+                <div id="fileCount" class="file-count"></div>
+            </div>
+
+            <!-- Progress Bar (shown during upload) -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text">
+                    <span id="progressText">Uploading... 0%</span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="submitBtn">📤 Create Report</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function updateFileCount() {
+        const fileInput = document.getElementById('fileInput');
+        const fileCount = document.getElementById('fileCount');
+        
+        if (fileInput.files.length > 0) {
+            const count = fileInput.files.length;
+            fileCount.textContent = `✓ ${count} file(s) selected and ready to upload`;
+            fileCount.style.display = 'block';
+        } else {
+            fileCount.style.display = 'none';
+        }
+    }
+
+    function handleFormSubmit(event) {
+        const fileInput = document.getElementById('fileInput');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // Show progress bar
+        progressContainer.style.display = 'block';
+        submitBtn.disabled = true;
+        
+        // Simulate upload progress
+        let progress = 0;
+        const interval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.random() * 30;
+                if (progress > 90) progress = 90;
+            }
+            progressFill.style.width = progress + '%';
+            progressText.textContent = `Uploading... ${Math.round(progress)}%`;
+        }, 300);
+        
+        // Allow form submission after a short delay to show progress starting
+        setTimeout(() => {
+            clearInterval(interval);
+        }, 1000);
+    }
+
+    // Drag and drop functionality
+    document.addEventListener('DOMContentLoaded', () => {
+        const fileInput = document.getElementById('fileInput');
+        const uploadLabel = document.querySelector('.file-upload-label');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadLabel.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadLabel.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadLabel.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            uploadLabel.style.borderColor = '#764ba2';
+            uploadLabel.style.background = 'linear-gradient(135deg, #e8ebff 0%, #dfe6ff 100%)';
+        }
+
+        function unhighlight(e) {
+            uploadLabel.style.borderColor = '#667eea';
+            uploadLabel.style.background = 'linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%)';
+        }
+
+        uploadLabel.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            updateFileCount();
+        }
+    });
+</script>
+
 {% endblock %}

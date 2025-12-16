@@ -401,12 +401,10 @@
     
     <div class="filter-controls">
       <input type="text" id="searchInput" placeholder="Search reports..." onkeyup="filterReports()">
-      <select id="dateFilter" onchange="filterReports()">
-        <option value="">All Dates</option>
-        {% for date in unique_dates %}
-          <option value="{{ date }}">{{ date }}</option>
-        {% endfor %}
-      </select>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <input type="date" id="fromDate" placeholder="From Date" onchange="filterReports()">
+        <input type="date" id="toDate" placeholder="To Date" onchange="filterReports()">
+      </div>
       <button onclick="resetFilters()">🔄 Reset</button>
     </div>
 
@@ -478,23 +476,33 @@
 <script>
   function filterReports() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    const dateFilter = document.getElementById('dateFilter').value;
+    const fromDate = document.getElementById('fromDate').value ? new Date(document.getElementById('fromDate').value) : null;
+    const toDate = document.getElementById('toDate').value ? new Date(document.getElementById('toDate').value) : null;
     const reports = document.querySelectorAll('.report-item');
 
     reports.forEach(report => {
       const name = report.getAttribute('data-report-name').toLowerCase();
-      const date = report.getAttribute('data-report-date');
+      const dateStr = report.getAttribute('data-report-date');
+      const reportDate = new Date(dateStr);
       
       const matchesSearch = name.includes(searchTerm);
-      const matchesDate = !dateFilter || date.includes(dateFilter);
+      let matchesDateRange = true;
       
-      report.style.display = (matchesSearch && matchesDate) ? 'block' : 'none';
+      if (fromDate && reportDate < fromDate) {
+        matchesDateRange = false;
+      }
+      if (toDate && reportDate > toDate) {
+        matchesDateRange = false;
+      }
+      
+      report.style.display = (matchesSearch && matchesDateRange) ? 'block' : 'none';
     });
   }
 
   function resetFilters() {
     document.getElementById('searchInput').value = '';
-    document.getElementById('dateFilter').value = '';
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
     document.querySelectorAll('.report-item').forEach(r => r.style.display = 'block');
   }
 
@@ -521,9 +529,14 @@
 
         let html = `
           <div class="report-header-info">
-            <h3>${data.report_name}</h3>
-            <p>📅 Created: ${data.createdAt}</p>
-            <p>📦 Items: ${data.inferences.length}</p>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <h3>${data.report_name}</h3>
+                <p>📅 Created: ${data.createdAt}</p>
+                <p>📦 Items: ${data.inferences.length}</p>
+              </div>
+              <a href="/api/report/${reportId}/export/excel" class="btn btn-primary" style="padding: 10px 20px; text-decoration: none; white-space: nowrap; margin-left: 20px;">📥 Download Excel</a>
+            </div>
           </div>
         `;
 
@@ -583,6 +596,21 @@
       modal.style.display = 'none';
     }
   }
+
+  // Auto-load report if passed via query parameter
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const reportId = urlParams.get('report');
+    
+    if (reportId) {
+      // Find the report item and click it to load
+      const reportItem = document.querySelector(`[data-report-id="${reportId}"]`);
+      if (reportItem) {
+        reportItem.click();
+      }
+    }
+  });
+
 </script>
 
 {% endblock %}
