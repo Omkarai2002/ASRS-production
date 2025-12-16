@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(__file__))
 
-from app.models import create_db_and_tables
+from app.auth.models import create_db_and_tables
 from app.auth import create_user
 
 create_db_and_tables()

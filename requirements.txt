@@ -6,3 +6,14 @@ Jinja2
 python-multipart 
 aiofiles
 itsdangerous
+python-dotenv 
+pymysql 
+boto3 
+google-cloud-vision 
+ultralytics 
+passlib
+qrcode
+reportlab
+pillow
+openpyxl
+regex

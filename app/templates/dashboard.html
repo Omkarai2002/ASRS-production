@@ -1,162 +1,282 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ASRS Dashboard</title>
+{% extends "base.html" %}
+{% block title %}Dashboard - ASRS{% endblock %}
+{% block content %}
+<style>
+    .dashboard-header {
+        margin-bottom: 40px;
+    }
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    .dashboard-title {
+        font-size: 36px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
 
-    <!-- Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    .dashboard-subtitle {
+        color: #7f8c8d;
+        font-size: 16px;
+    }
 
-    <style>
-        body {
-            min-height: 100vh;
-            background: #f5f6fa;
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 25px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        border-top: 5px solid #667eea;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        margin-bottom: 20px;
+    }
+
+    .stat-icon.blue {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-icon.pink {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-icon.cyan {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .stat-icon.green {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+
+    .stat-label {
+        font-size: 13px;
+        color: #7f8c8d;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+    }
+
+    .stat-value {
+        font-size: 36px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .action-buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 40px;
+    }
+
+    .action-btn {
+        padding: 20px;
+        background: white;
+        border: 2px solid #ecf0f1;
+        border-radius: 12px;
+        text-decoration: none;
+        text-align: center;
+        font-weight: 600;
+        color: #2c3e50;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .action-btn:hover {
+        border-color: #667eea;
+        color: #667eea;
+        transform: translateY(-3px);
+    }
+
+    .action-btn.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+
+    .action-btn.primary:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .section {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        margin-bottom: 30px;
+    }
+
+    .section-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ecf0f1;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-title {
+            font-size: 28px;
         }
-        .sidebar {
-            height: 100vh;
-            width: 250px;
-            background: #111827;
-            color: white;
-            position: fixed;
-            top: 0;
-            left: 0;
-            padding-top: 60px;
+
+        .stats-grid {
+            grid-template-columns: 1fr;
         }
-        .sidebar a {
-            text-decoration: none;
-            color: #d1d5db;
-            padding: 12px 20px;
-            display: block;
-            font-size: 15px;
+
+        .action-buttons {
+            grid-template-columns: 1fr;
         }
-        .sidebar a:hover {
-            background: #1f2937;
-            color: #fff;
-        }
-        .content {
-            margin-left: 250px;
+
+        .stat-card {
             padding: 20px;
         }
+    }
+</style>
 
-        /* Mobile responsive */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            .content {
-                margin-left: 0;
-            }
-        }
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">🎯 Dashboard</h1>
+        <p class="dashboard-subtitle">Welcome back to ASRS</p>
+    </div>
+</div>
 
-        .card {
-            border-radius: 12px;
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-        <h4 class="text-center mb-4">📦 ASRS</h4>
-
-        <a href="#"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-        <a href="#"><i class="bi bi-box-seam me-2"></i> Inventory</a>
-        <a href="#"><i class="bi bi-file-earmark-spreadsheet me-2"></i> CSV Reports</a>
-        <a href="#"><i class="bi bi-gear me-2"></i> Settings</a>
-        <a href="#"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+<!-- Statistics -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon blue">📊</div>
+        <div class="stat-label">Total Reports</div>
+        <div class="stat-value">{{ total_reports }}</div>
     </div>
 
-    <!-- MAIN CONTENT -->
-    <div class="content">
-        <div class="container-fluid">
-            <h2 class="mb-4">Dashboard</h2>
-
-            <!-- TOP CARDS -->
-            <div class="row g-3">
-                <div class="col-md-3 col-6">
-                    <div class="card p-3 shadow-sm">
-                        <h6>Total Boxes</h6>
-                        <h3>1,284</h3>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="card p-3 shadow-sm">
-                        <h6>Rack Positions</h6>
-                        <h3>842</h3>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="card p-3 shadow-sm">
-                        <h6>Detected Errors</h6>
-                        <h3 class="text-danger">12</h3>
-                    </div>
-                </div>
-                <div class="col-md-3 col-6">
-                    <div class="card p-3 shadow-sm">
-                        <h6>Updated Today</h6>
-                        <h3>47</h3>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CHARTS -->
-            <div class="row mt-4 g-4">
-                <div class="col-lg-6">
-                    <div class="card shadow-sm p-3">
-                        <h5 class="mb-3">Box Count Trend</h5>
-                        <canvas id="chart1" height="150"></canvas>
-                    </div>
-                </div>
-
-                <div class="col-lg-6">
-                    <div class="card shadow-sm p-3">
-                        <h5 class="mb-3">Errors per Day</h5>
-                        <canvas id="chart2" height="150"></canvas>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    <div class="stat-card">
+        <div class="stat-icon pink">🔍</div>
+        <div class="stat-label">Items Detected</div>
+        <div class="stat-value">{{ qrs_today }}</div>
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="stat-card">
+        <div class="stat-icon cyan">📱</div>
+        <div class="stat-label">Reports Today</div>
+        <div class="stat-value">{{ reports_today }}</div>
+    </div>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <div class="stat-card">
+        <div class="stat-icon green">✓</div>
+        <div class="stat-label">System Status</div>
+        <div class="stat-value">{{ system_status }}</div>
+    </div>
+</div>
 
-    <script>
-        // Simple Chart Example
-        new Chart(document.getElementById("chart1"), {
-            type: "line",
+<!-- Quick Actions -->
+<div class="action-buttons">
+    <a href="/reports" class="action-btn primary">📋 View Reports</a>
+    <a href="/upload" class="action-btn primary">📤 Upload Images</a>
+    <a href="/visualize" class="action-btn primary">👁️ Visualize Data</a>
+    <a href="/qr" class="action-btn primary">📱 Generate QR</a>
+</div>
+
+<!-- Activity Chart -->
+<div class="section">
+    <h2 class="section-title">📈 Activity Overview</h2>
+    <div class="chart-container">
+        <canvas id="activityChart"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Activity Chart
+    const ctx = document.getElementById('activityChart');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'line',
             data: {
-                labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+                labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
                 datasets: [{
-                    label: "Boxes",
-                    data: [10, 20, 15, 30, 25],
-                    borderWidth: 2
+                    label: 'Reports Created',
+                    data: [12, 19, 8, 15, 13, 17, 14],
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#667eea',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                },
+                {
+                    label: 'Items Detected',
+                    data: [8, 12, 10, 14, 11, 15, 12],
+                    borderColor: '#764ba2',
+                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#764ba2',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
                 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: { size: 14, weight: '600' },
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
             }
         });
+    }
+</script>
 
-        new Chart(document.getElementById("chart2"), {
-            type: "bar",
-            data: {
-                labels: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-                datasets: [{
-                    label: "Errors",
-                    data: [2, 1, 3, 0, 6],
-                    borderWidth: 2
-                }]
-            }
-        });
-    </script>
-</body>
-</html>
+{% endblock %}
