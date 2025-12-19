@@ -1,11 +1,11 @@
 from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
+from urllib3 import request
 from backend.database import SessionLocal
 from backend.models.report import Report
 from backend.models.inference import Inference
 from backend.models.raw_data import RawData
-
 
 def get_reports():
     with SessionLocal() as session:
@@ -20,9 +20,9 @@ def get_reports_today():
         return session.query(Report).filter(func.date(Report.createdAt) == date.today()).all()
 
 
-def create_report(report_name: str):
+def create_report(report_name: str, user_id: int = None):
     with SessionLocal() as session:
-        report = Report(report_name=report_name)
+        report = Report(report_name=report_name, user_id=user_id)
         session.add(report)
         session.commit()
         session.refresh(report)

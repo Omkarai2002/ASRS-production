@@ -33,7 +33,7 @@ def process_single_image(image_path):
     return build_result(image_name, records, detection)
 
 
-def get_inferences(report_dir, report_id):
+def get_inferences(report_dir, report_id, user_id=None):
     """
     Process all images:
     - Run OCR + detection
@@ -71,6 +71,7 @@ def get_inferences(report_dir, report_id):
             for result in results:
                 inference = Inference(
                     report_id=report_id,
+                    user_id=user_id,  # NEW: Store user_id with inference
                     image_name=result.get("IMG_NAME", ""),
                     unique_id=result.get("UNIQUE_ID", ""),
                     quantity=result.get("QUANTITY", 1),

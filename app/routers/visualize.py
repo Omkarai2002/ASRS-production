@@ -3,7 +3,7 @@
 from backend.database import SessionLocal
 from backend.models.report import Report
 from backend.models.inference import Inference
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import APIRouter, Request, Form, UploadFile, File, BackgroundTasks
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
@@ -14,10 +14,15 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/visualize", response_class=HTMLResponse)
 def visualize_reports(request: Request, search: str = None, date: str = None, report: int = None):
+    # Check if user is logged in
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse("/login", status_code=303)
+    
     db = SessionLocal()
     try:
-        # Start with base query
-        query = db.query(Report).order_by(Report.createdAt.desc())
+        # Start with base query - FILTER BY USER_ID
+        query = db.query(Report).filter(Report.user_id == user_id).order_by(Report.createdAt.desc())
         
         # Apply date filter if provided
         if date:
@@ -30,15 +35,18 @@ def visualize_reports(request: Request, search: str = None, date: str = None, re
         # Get filtered reports
         reports = query.all()
         
-        # Get unique dates for date filter (sorted descending)
-        unique_dates = db.query(Report.createdAt).distinct().filter(Report.createdAt.isnot(None)).order_by(Report.createdAt.desc()).all()
+        # Get unique dates for date filter (sorted descending) - FILTERED BY USER_ID
+        unique_dates = db.query(Report.createdAt).filter(Report.user_id == user_id).distinct().filter(Report.createdAt.isnot(None)).order_by(Report.createdAt.desc()).all()
         unique_dates = [str(d[0]) if d[0] else None for d in unique_dates if d[0]]
         
         # Get auto-select report if report ID is provided
         selected_report_id = report
         selected_report_data = None
         if selected_report_id:
-            selected_report = db.query(Report).filter(Report.id == selected_report_id).first()
+            selected_report = db.query(Report).filter(
+                Report.id == selected_report_id,
+                Report.user_id == user_id  # ENSURE OWNER MATCHES
+            ).first()
             if selected_report:
                 inferences = db.query(Inference).filter(Inference.report_id == selected_report_id).order_by(Inference.id.desc()).all()
                 selected_report_data = {
@@ -81,10 +89,18 @@ def visualize_reports(request: Request, search: str = None, date: str = None, re
         db.close()
 
 @router.get("/api/report/{report_id}/details")
-def get_report_details_api(report_id: int):
+def get_report_details_api(request: Request, report_id: int):
+    # Check if user is logged in and owns this report
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"error": "Unauthorized"}
+    
     db = SessionLocal()
     try:
-        report = db.query(Report).filter(Report.id == report_id).first()
+        report = db.query(Report).filter(
+            Report.id == report_id,
+            Report.user_id == user_id  # ENSURE OWNER MATCHES
+        ).first()
         if not report:
             return {"error": "Report not found"}
         
@@ -182,8 +198,13 @@ def get_report_details(report_id: int):
 
 
 @router.get("/api/report/{report_id}/export/excel")
-def export_report_excel(report_id: int):
+def export_report_excel(request: Request, report_id: int):
     """Export report data to Excel file"""
+    # Check if user is logged in and owns this report
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"error": "Unauthorized"}
+    
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from io import BytesIO
@@ -191,7 +212,10 @@ def export_report_excel(report_id: int):
     
     db = SessionLocal()
     try:
-        report = db.query(Report).filter(Report.id == report_id).first()
+        report = db.query(Report).filter(
+            Report.id == report_id,
+            Report.user_id == user_id  # ENSURE OWNER MATCHES
+        ).first()
         if not report:
             return {"error": "Report not found"}
         
