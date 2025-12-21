@@ -1,4 +1,4 @@
-name: Deploy to EC2 (dev)
+name: Deploy to EC2
 
 on:
   push:
@@ -13,15 +13,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy to EC2 via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
           script: |
-            cd ${{ secrets.APP_DIR }}
-            git pull origin dev
+            set -e
+            cd /home/ubuntu/ASRS-prod
+
+            # Ensure repo exists
+            if [ ! -d ".git" ]; then
+              git clone -b dev https://github.com/Omkarai2002/ASRS-production.git .
+            else
+              git fetch origin
+              git checkout dev
+              git reset --hard origin/dev
+            fi
+
             source venv/bin/activate
             pip install -r requirements.txt
+
             sudo systemctl restart app
