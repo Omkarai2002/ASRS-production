@@ -17,7 +17,7 @@ def dashboard(request: Request):
     user_id = request.session.get("user_id")
     if not user_id:
         return RedirectResponse("/login", status_code=303)
-    
+   
     db = SessionLocal()
     try:
         # Get ONLY this user's reports
