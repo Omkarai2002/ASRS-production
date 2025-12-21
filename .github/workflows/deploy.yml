@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to EC2 (dev)
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy via SSH
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ${{ secrets.APP_DIR }}
-            git pull origin main
+            git pull origin dev
             source venv/bin/activate
             pip install -r requirements.txt
             sudo systemctl restart app
