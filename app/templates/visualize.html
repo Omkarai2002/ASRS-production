@@ -174,7 +174,7 @@
 
   .images-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(var(--grid-columns, 8), 1fr);
     gap: 20px;
     margin-top: 20px;
   }
@@ -187,12 +187,37 @@
     cursor: pointer;
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    position: relative;
   }
 
   .image-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     border-color: #667eea;
+  }
+
+  .level-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .level-info {
+    background: #f8f9fa;
+    padding: 10px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+    font-weight: 500;
   }
 
   .image-wrapper {
@@ -257,6 +282,177 @@
     text-align: center;
     padding: 60px 20px;
     color: #999;
+  }
+
+  /* Report Summary Styles */
+  .report-summary {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-left: 5px solid #667eea;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+  }
+
+  .summary-item {
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+  }
+
+  .summary-item.filled {
+    border-left-color: #28a745;
+  }
+
+  .summary-item.empty {
+    border-left-color: #ffc107;
+  }
+
+  .summary-item.sticker-not-found {
+    border-left-color: #e83e8c;
+  }
+
+  .summary-item.multiple-stickers {
+    border-left-color: #fd7e14;
+  }
+
+  .summary-item.non-conformity {
+    border-left-color: #dc3545;
+  }
+
+  .summary-item.other {
+    border-left-color: #6c757d;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #666;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .summary-count {
+    font-size: 32px;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .summary-count.filled {
+    color: #28a745;
+  }
+
+  .summary-count.empty {
+    color: #ffc107;
+  }
+
+  .summary-count.sticker-not-found {
+    color: #e83e8c;
+  }
+
+  .summary-count.multiple-stickers {
+    color: #fd7e14;
+  }
+
+  .summary-count.non-conformity {
+    color: #dc3545;
+  }
+
+  .summary-count.other {
+    color: #6c757d;
+  }
+
+  /* Exclusion color codes on image cards */
+  .image-card.exclusion-filled {
+    border-color: #28a745;
+    border-width: 3px;
+  }
+
+  .image-card.exclusion-empty {
+    border-color: #ffc107;
+    border-width: 3px;
+  }
+
+  .image-card.exclusion-sticker-not-found {
+    border-color: #e83e8c;
+    border-width: 3px;
+  }
+
+  .image-card.exclusion-multiple-stickers {
+    border-color: #fd7e14;
+    border-width: 3px;
+  }
+
+  .image-card.exclusion-other {
+    border-color: #6c757d;
+    border-width: 3px;
+  }
+
+  .image-card.non-conformity {
+    border-color: #dc3545;
+    border-width: 3px;
+  }
+
+  .exclusion-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 10;
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .legend {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    border: 1px solid #e0e0e0;
+  }
+
+  .legend-title {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+
+  .legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #666;
+  }
+
+  .legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 3px solid;
   }
 
   .error-message {
@@ -527,6 +723,13 @@
           return;
         }
 
+        // Set CSS variable for dynamic grid columns based on user settings
+        const imagesPerRow = data.user_settings?.images_per_row || 8;
+        document.documentElement.style.setProperty('--grid-columns', imagesPerRow);
+
+        // Calculate summary statistics
+        const summary = calculateSummary(data.inferences);
+
         let html = `
           <div class="report-header-info">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
@@ -535,7 +738,37 @@
                 <p>📅 Created: ${data.createdAt}</p>
                 <p>📦 Items: ${data.inferences.length}</p>
               </div>
-              <a href="/api/report/${reportId}/export/excel" class="btn btn-primary" style="padding: 10px 20px; text-decoration: none; white-space: nowrap; margin-left: 20px;">📥 Download Excel</a>
+              <button onclick="downloadExcel(${reportId}, '${data.report_name.replace(/'/g, "\\'")}');" class="btn btn-primary" style="padding: 10px 20px; cursor: pointer; white-space: nowrap; margin-left: 20px; border: none; background-color: #4CAF50; color: white; border-radius: 4px; font-weight: 600;">📥 Download Excel</button>
+            </div>
+          </div>
+
+          <div class="report-summary">
+            <div style="font-weight: bold; font-size: 14px; color: #333; margin-bottom: 10px;">📊 Summary Statistics</div>
+            <div class="summary-grid">
+              <div class="summary-item filled">
+                <div class="summary-label">✓ Filled</div>
+                <div class="summary-count filled">${summary.filled}</div>
+              </div>
+              <div class="summary-item empty">
+                <div class="summary-label">⚪ Empty Skid</div>
+                <div class="summary-count empty">${summary.empty}</div>
+              </div>
+              <div class="summary-item sticker-not-found">
+                <div class="summary-label">❌ Sticker Not Found</div>
+                <div class="summary-count sticker-not-found">${summary.stickerNotFound}</div>
+              </div>
+              <div class="summary-item multiple-stickers">
+                <div class="summary-label">⚠️ Multiple Stickers</div>
+                <div class="summary-count multiple-stickers">${summary.multipleStickers}</div>
+              </div>
+              <div class="summary-item non-conformity">
+                <div class="summary-label">🚨 Non-Conformity</div>
+                <div class="summary-count non-conformity">${summary.nonConformity}</div>
+              </div>
+              <div class="summary-item other">
+                <div class="summary-label">📝 Other</div>
+                <div class="summary-count other">${summary.other}</div>
+              </div>
             </div>
           </div>
         `;
@@ -548,8 +781,29 @@
             const status = inf.is_non_confirmity ? 'Non-Conformity' : 'Confirmed';
             const statusClass = inf.is_non_conformity ? 'status-non-conformity' : 'status-confirmed';
             
+            // Determine exclusion color class
+            let exclusionClass = 'exclusion-other';
+            if (inf.is_non_conformity) {
+              exclusionClass = 'non-conformity';
+            } else if (inf.exclusion) {
+              const exclusionLower = inf.exclusion.toLowerCase();
+              if (exclusionLower.includes('empty')) {
+                exclusionClass = 'exclusion-empty';
+              } else if (exclusionLower.includes('sticker') && exclusionLower.includes('not')) {
+                exclusionClass = 'exclusion-sticker-not-found';
+              } else if (exclusionLower.includes('multiple')) {
+                exclusionClass = 'exclusion-multiple-stickers';
+              } else if (exclusionLower.includes('filled')) {
+                exclusionClass = 'exclusion-filled';
+              }
+            } else if (!inf.exclusion || inf.exclusion === 'None') {
+              exclusionClass = 'exclusion-filled';
+            }
+            
             html += `
-              <div class="image-card" onclick="openImageModal(${inf.id}, '${(inf.unique_id || 'N/A').replace(/'/g, "\\'")}', '${(inf.vin_no || 'N/A').replace(/'/g, "\\'")}', ${inf.quantity || 0}, '${(inf.image_name || 'N/A').replace(/'/g, "\\'")}', '${status}', '${(inf.exclusion || 'None').replace(/'/g, "\\'")}', '${(inf.s3_obj_url || '').replace(/'/g, "\\'")}')">
+              <div class="image-card ${exclusionClass}" onclick="openImageModal(${inf.id}, '${(inf.unique_id || 'N/A').replace(/'/g, "\\'")}', '${(inf.vin_no || 'N/A').replace(/'/g, "\\'")}', ${inf.quantity || 0}, '${(inf.image_name || 'N/A').replace(/'/g, "\\'")}', '${status}', '${(inf.exclusion || 'None').replace(/'/g, "\\'")}', '${(inf.s3_obj_url || '').replace(/'/g, "\\'")}')">
+                <div class="level-badge">${inf.level_name || 'N/A'}</div>
+                <div class="exclusion-badge">${inf.exclusion || 'No Info'}</div>
                 <div class="image-wrapper">
                   ${inf.s3_obj_url ? 
                     `<img src="${inf.s3_obj_url}" alt="Item" onerror="this.src='/static/images/placeholder.svg'">` :
@@ -562,10 +816,44 @@
                   <p><strong>Qty:</strong> ${inf.quantity || 'N/A'}</p>
                   <span class="status-badge ${statusClass}">${status}</span>
                 </div>
+                <div class="level-info">Level ${inf.level_number} • Position ${inf.position_in_level}</div>
               </div>
             `;
           });
           html += '</div>';
+
+          // Add legend
+          html += `
+            <div class="legend">
+              <div class="legend-title">🎨 Color Legend</div>
+              <div class="legend-items">
+                <div class="legend-item">
+                  <div class="legend-color" style="border-color: #28a745;"></div>
+                  <span>Filled</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="border-color: #ffc107;"></div>
+                  <span>Empty Skid</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="border-color: #e83e8c;"></div>
+                  <span>Sticker Not Found</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="border-color: #fd7e14;"></div>
+                  <span>Multiple Stickers</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="border-color: #dc3545;"></div>
+                  <span>Non-Conformity</span>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="border-color: #6c757d;"></div>
+                  <span>Other</span>
+                </div>
+              </div>
+            </div>
+          `;
         }
 
         contentDiv.innerHTML = html;
@@ -573,6 +861,40 @@
       .catch(error => {
         contentDiv.innerHTML = `<div class="error-message">Error loading report: ${error}</div>`;
       });
+  }
+
+  function calculateSummary(inferences) {
+    const summary = {
+      filled: 0,
+      empty: 0,
+      stickerNotFound: 0,
+      multipleStickers: 0,
+      nonConformity: 0,
+      other: 0
+    };
+
+    inferences.forEach(inf => {
+      if (inf.is_non_confirmity) {
+        summary.nonConformity++;
+      } else if (inf.exclusion) {
+        const exclusionLower = inf.exclusion.toLowerCase();
+        if (exclusionLower.includes('empty')) {
+          summary.empty++;
+        } else if (exclusionLower.includes('sticker') && exclusionLower.includes('not')) {
+          summary.stickerNotFound++;
+        } else if (exclusionLower.includes('multiple')) {
+          summary.multipleStickers++;
+        } else if (exclusionLower.includes('filled')) {
+          summary.filled++;
+        } else {
+          summary.other++;
+        }
+      } else {
+        summary.filled++;
+      }
+    });
+
+    return summary;
   }
 
   function openImageModal(id, uniqueId, vin, qty, imageName, status, exclusion, imageUrl) {
@@ -595,6 +917,15 @@
     if (event.target === modal) {
       modal.style.display = 'none';
     }
+  }
+
+  function downloadExcel(reportId, reportName) {
+    const link = document.createElement('a');
+    link.href = `/api/report/${reportId}/export/excel`;
+    link.download = `${reportName || 'report'}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   // Auto-load report if passed via query parameter

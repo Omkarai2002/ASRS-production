@@ -3,14 +3,39 @@
 from backend.database import SessionLocal
 from backend.models.report import Report
 from backend.models.inference import Inference
+from backend.models.user_settings import UserSettings
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import APIRouter, Request, Form, UploadFile, File, BackgroundTasks
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func
+from sqlalchemy import func, text
+from sqlalchemy.exc import OperationalError
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
+
+def get_db_session():
+    """Get a database session with automatic retry on connection failure"""
+    max_retries = 3
+    retry_delay = 0.5
+    
+    for attempt in range(max_retries):
+        try:
+            db = SessionLocal()
+            # Test the connection
+            db.execute(text("SELECT 1"))
+            return db
+        except OperationalError as e:
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(retry_delay)
+            else:
+                raise
+
 
 @router.get("/visualize", response_class=HTMLResponse)
 def visualize_reports(request: Request, search: str = None, date: str = None, report: int = None):
@@ -19,8 +44,18 @@ def visualize_reports(request: Request, search: str = None, date: str = None, re
     if not user_id:
         return RedirectResponse("/login", status_code=303)
     
-    db = SessionLocal()
+    db = None
     try:
+        db = get_db_session()
+        
+        # Get user settings with retry
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        if not user_settings:
+            # Create default settings if not exists
+            user_settings = UserSettings(user_id=user_id)
+            db.add(user_settings)
+            db.commit()
+        
         # Start with base query - FILTER BY USER_ID
         query = db.query(Report).filter(Report.user_id == user_id).order_by(Report.createdAt.desc())
         
@@ -49,24 +84,37 @@ def visualize_reports(request: Request, search: str = None, date: str = None, re
             ).first()
             if selected_report:
                 inferences = db.query(Inference).filter(Inference.report_id == selected_report_id).order_by(Inference.id.desc()).all()
+                
+                # Calculate levels based on user settings and number of inferences
+                inferences_with_levels = []
+                images_per_row = user_settings.images_per_row
+                level_prefix = user_settings.level_prefix
+                
+                for idx, inf in enumerate(inferences):
+                    level_number = (idx // images_per_row) + 1
+                    position_in_level = (idx % images_per_row) + 1
+                    level_name = f"{level_prefix}{level_number}-{position_in_level}"
+                    
+                    inferences_with_levels.append({
+                        "id": inf.id,
+                        "unique_id": inf.unique_id,
+                        "vin_no": inf.vin_no,
+                        "quantity": inf.quantity,
+                        "image_name": inf.image_name,
+                        "s3_obj_url": inf.s3_obj_url,
+                        "exclusion": inf.exclusion,
+                        "is_non_confirmity": inf.is_non_confirmity,
+                        "createdAt": str(inf.createdAt),
+                        "level_name": level_name,
+                        "level_number": level_number,
+                        "position_in_level": position_in_level
+                    })
+                
                 selected_report_data = {
                     "id": selected_report.id,
                     "report_name": selected_report.report_name,
                     "createdAt": str(selected_report.createdAt),
-                    "inferences": [
-                        {
-                            "id": inf.id,
-                            "unique_id": inf.unique_id,
-                            "vin_no": inf.vin_no,
-                            "quantity": inf.quantity,
-                            "image_name": inf.image_name,
-                            "s3_obj_url": inf.s3_obj_url,
-                            "exclusion": inf.exclusion,
-                            "is_non_confirmity": inf.is_non_confirmity,
-                            "createdAt": str(inf.createdAt)
-                        }
-                        for inf in inferences
-                    ]
+                    "inferences": inferences_with_levels
                 }
         
         return templates.TemplateResponse("visualize.html", {
@@ -76,17 +124,34 @@ def visualize_reports(request: Request, search: str = None, date: str = None, re
             "selected_date": date,
             "search_query": search,
             "selected_report": selected_report_data,
-            "selected_report_id": selected_report_id
+            "selected_report_id": selected_report_id,
+            "user_settings": {
+                "images_per_row": user_settings.images_per_row,
+                "level_prefix": user_settings.level_prefix,
+                "image_size": user_settings.image_size,
+                "show_image_info": user_settings.show_image_info,
+                "show_level_info": user_settings.show_level_info
+            }
         })
-    except Exception as e:
+    except OperationalError as e:
+        logger.error(f"Database connection error in visualize_reports: {str(e)}")
         return templates.TemplateResponse("visualize.html", {
             "request": request,
             "reports": [],
             "unique_dates": [],
-            "error": f"Error loading reports: {str(e)}"
+            "error": "Database connection error. Please refresh the page."
+        })
+    except Exception as e:
+        logger.error(f"Error in visualize_reports: {str(e)}")
+        return templates.TemplateResponse("visualize.html", {
+            "request": request,
+            "reports": [],
+            "unique_dates": [],
+            "error": f"Error loading reports. Please try again."
         })
     finally:
-        db.close()
+        if db:
+            db.close()
 
 @router.get("/api/report/{report_id}/details")
 def get_report_details_api(request: Request, report_id: int):
@@ -95,8 +160,17 @@ def get_report_details_api(request: Request, report_id: int):
     if not user_id:
         return {"error": "Unauthorized"}
     
-    db = SessionLocal()
+    db = None
     try:
+        db = get_db_session()
+        
+        # Get user settings
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        if not user_settings:
+            user_settings = UserSettings(user_id=user_id)
+            db.add(user_settings)
+            db.commit()
+        
         report = db.query(Report).filter(
             Report.id == report_id,
             Report.user_id == user_id  # ENSURE OWNER MATCHES
@@ -106,27 +180,53 @@ def get_report_details_api(request: Request, report_id: int):
         
         inferences = db.query(Inference).filter(Inference.report_id == report_id).all()
         
+        # Calculate levels based on user settings
+        images_per_row = user_settings.images_per_row
+        level_prefix = user_settings.level_prefix
+        
+        inferences_with_levels = []
+        for idx, inf in enumerate(inferences):
+            level_number = (idx // images_per_row) + 1
+            position_in_level = (idx % images_per_row) + 1
+            level_name = f"{level_prefix}{level_number}-{position_in_level}"
+            
+            inferences_with_levels.append({
+                "id": inf.id,
+                "unique_id": inf.unique_id,
+                "vin_no": inf.vin_no,
+                "quantity": inf.quantity,
+                "image_name": inf.image_name,
+                "s3_obj_url": inf.s3_obj_url,
+                "exclusion": inf.exclusion,
+                "is_non_confirmity": inf.is_non_confirmity,
+                "createdAt": str(inf.createdAt),
+                "level_name": level_name,
+                "level_number": level_number,
+                "position_in_level": position_in_level
+            })
+        
         return {
             "id": report.id,
             "report_name": report.report_name,
             "createdAt": str(report.createdAt),
-            "inferences": [
-                {
-                    "id": inf.id,
-                    "unique_id": inf.unique_id,
-                    "vin_no": inf.vin_no,
-                    "quantity": inf.quantity,
-                    "image_name": inf.image_name,
-                    "s3_obj_url": inf.s3_obj_url,
-                    "exclusion": inf.exclusion,
-                    "is_non_confirmity": inf.is_non_confirmity,
-                    "createdAt": str(inf.createdAt)
-                }
-                for inf in inferences
-            ]
+            "inferences": inferences_with_levels,
+            "user_settings": {
+                "images_per_row": user_settings.images_per_row,
+                "level_prefix": user_settings.level_prefix,
+                "image_size": user_settings.image_size,
+                "show_image_info": user_settings.show_image_info,
+                "show_level_info": user_settings.show_level_info
+            }
         }
+    except OperationalError as e:
+        logger.error(f"Database connection error in get_report_details_api: {str(e)}")
+        return {"error": "Database connection error. Please refresh the page."}
+    except Exception as e:
+        logger.error(f"Error in get_report_details_api: {str(e)}")
+        return {"error": f"Error loading report details."}
     finally:
-        db.close()
+        if db:
+            db.close()
 
 
 # --------------------------
@@ -210,8 +310,10 @@ def export_report_excel(request: Request, report_id: int):
     from io import BytesIO
     from fastapi.responses import StreamingResponse
     
-    db = SessionLocal()
+    db = None
     try:
+        db = get_db_session()
+        
         report = db.query(Report).filter(
             Report.id == report_id,
             Report.user_id == user_id  # ENSURE OWNER MATCHES
@@ -308,5 +410,12 @@ def export_report_excel(request: Request, report_id: int):
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f"attachment; filename=Report_{report.id}_{report.report_name.replace(' ', '_')}.xlsx"}
         )
+    except OperationalError as e:
+        logger.error(f"Database connection error in export_report_excel: {str(e)}")
+        return {"error": "Database connection error. Please try again."}
+    except Exception as e:
+        logger.error(f"Error in export_report_excel: {str(e)}")
+        return {"error": f"Error exporting report."}
     finally:
-        db.close()
+        if db:
+            db.close()

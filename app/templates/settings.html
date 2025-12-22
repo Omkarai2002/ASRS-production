@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+{% block title %}Settings - ASRS{% endblock %}
+
+{% block content %}
+<style>
+    .settings-page {
+        animation: fadeIn 0.5s ease-in;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .page-header {
+        margin-bottom: 40px;
+    }
+
+    .page-header h1 {
+        color: #2c3e50;
+        font-size: 36px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .page-header p {
+        color: #7f8c8d;
+        font-size: 16px;
+    }
+
+    .alert {
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        font-weight: 500;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border-left: 4px solid #28a745;
+    }
+
+    .alert-error {
+        background: #f8d7da;
+        color: #721c24;
+        border-left: 4px solid #f5576c;
+    }
+
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+    }
+
+    .settings-card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        border-top: 5px solid #667eea;
+    }
+
+    .settings-card h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    .form-label {
+        display: block;
+        color: #2c3e50;
+        font-weight: 600;
+        margin-bottom: 10px;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+        transition: all 0.3s ease;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group.checkbox {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 15px;
+    }
+
+    .checkbox-input {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: #667eea;
+    }
+
+    .checkbox-label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: 500;
+        color: #2c3e50;
+        text-transform: none;
+        letter-spacing: normal;
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-top: 8px;
+        font-style: italic;
+    }
+
+    .preview-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+
+    .preview-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .level-preview {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .level-tag {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .grid-preview {
+        display: grid;
+        grid-template-columns: repeat(var(--images-per-row), 1fr);
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .grid-item {
+        aspect-ratio: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+        flex: 1;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+
+    .btn-secondary:hover {
+        background: #f8f9fa;
+    }
+
+    .info-box {
+        background: #f5f7ff;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .info-box p {
+        color: #2c3e50;
+        font-size: 13px;
+        margin: 0;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 28px;
+        }
+
+        .settings-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .button-group {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="settings-page">
+    <!-- Alert Messages -->
+    {% if request.query_params.get('success') %}
+        <div class="alert alert-success">✓ {{ request.query_params.get('success') }}</div>
+    {% endif %}
+    {% if request.query_params.get('error') %}
+        <div class="alert alert-error">✗ {{ request.query_params.get('error') }}</div>
+    {% endif %}
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>⚙️ Settings</h1>
+        <p>Customize your visualization and display preferences</p>
+    </div>
+
+    <!-- Settings Form -->
+    <form method="post" action="/settings/update">
+        <div class="settings-grid">
+            <!-- Visualization Settings Card -->
+            <div class="settings-card">
+                <h2>📊 Visualization Settings</h2>
+
+                <div class="info-box">
+                    <p>Configure how images are displayed in the visualization page. These settings control the grid layout and level organization.</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Images Per Row</label>
+                    <input 
+                        type="number" 
+                        name="images_per_row" 
+                        class="form-control" 
+                        value="{{ settings.images_per_row if settings else 8 }}"
+                        min="1"
+                        max="20"
+                        required
+                    >
+                    <p class="help-text">📌 Number of images displayed in each row (1-20). Default: 8</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Level Prefix</label>
+                    <input 
+                        type="text" 
+                        name="level_prefix" 
+                        class="form-control" 
+                        value="{{ settings.level_prefix if settings else 'L' }}"
+                        placeholder="e.g., L, Level, Storage, Rack"
+                        maxlength="20"
+                        required
+                    >
+                    <p class="help-text">📌 Prefix used for level naming (e.g., "L1-1", "Level2-5", "Rack3-2")</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Image Size</label>
+                    <select name="image_size" class="form-select">
+                        <option value="small" {% if settings and settings.image_size == 'small' %}selected{% endif %}>Small (150px)</option>
+                        <option value="medium" {% if settings and settings.image_size == 'medium' %}selected{% endif %}>Medium (200px)</option>
+                        <option value="large" {% if settings and settings.image_size == 'large' %}selected{% endif %}>Large (250px)</option>
+                    </select>
+                </div>
+
+                <!-- Level Preview -->
+                <div class="preview-section">
+                    <div class="preview-title">Level Naming Preview</div>
+                    <div class="level-preview">
+                        <div class="level-tag" id="preview1">{{ settings.level_prefix if settings else 'L' }}1-1</div>
+                        <div class="level-tag" id="preview2">{{ settings.level_prefix if settings else 'L' }}1-2</div>
+                        <div class="level-tag" id="preview3">{{ settings.level_prefix if settings else 'L' }}2-1</div>
+                        <div class="level-tag" id="preview4">{{ settings.level_prefix if settings else 'L' }}2-2</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Options Card -->
+            <div class="settings-card">
+                <h2>👁️ Display Options</h2>
+
+                <div class="info-box">
+                    <p>Toggle additional information displayed alongside your images and levels.</p>
+                </div>
+
+                <div class="form-group checkbox">
+                    <input 
+                        type="checkbox" 
+                        id="show_image_info"
+                        name="show_image_info" 
+                        class="checkbox-input"
+                        value="on"
+                        {% if settings and settings.show_image_info %}checked{% endif %}
+                    >
+                    <label for="show_image_info" class="checkbox-label">Show Image Metadata</label>
+                </div>
+                <p class="help-text">📌 Display image filename, size, and upload date</p>
+
+                <div class="form-group checkbox">
+                    <input 
+                        type="checkbox" 
+                        id="show_level_info"
+                        name="show_level_info" 
+                        class="checkbox-input"
+                        value="on"
+                        {% if settings and settings.show_level_info %}checked{% endif %}
+                    >
+                    <label for="show_level_info" class="checkbox-label">Show Level Information</label>
+                </div>
+                <p class="help-text">📌 Display level, position, and status information</p>
+
+                <!-- Grid Preview -->
+                <div class="preview-section">
+                    <div class="preview-title">Grid Layout Preview</div>
+                    <div class="grid-preview" style="--images-per-row: {{ settings.images_per_row if settings else 8 }}">
+                        {% for i in range(settings.images_per_row if settings else 8) %}
+                            <div class="grid-item">Image {{ i+1 }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+            <a href="/dashboard" class="btn btn-secondary" style="text-decoration: none;">← Back to Dashboard</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Real-time preview updates for level prefix
+    const levelPrefixInput = document.querySelector('input[name="level_prefix"]');
+    const previewTags = document.querySelectorAll('.level-preview .level-tag');
+    
+    if (levelPrefixInput) {
+        levelPrefixInput.addEventListener('input', function() {
+            const prefix = this.value || 'L';
+            const configs = [
+                { level: 1, pos: 1 },
+                { level: 1, pos: 2 },
+                { level: 2, pos: 1 },
+                { level: 2, pos: 2 }
+            ];
+            
+            previewTags.forEach((tag, idx) => {
+                const config = configs[idx];
+                tag.textContent = `${prefix}${config.level}-${config.pos}`;
+            });
+        });
+    }
+
+    // Real-time preview updates for images per row
+    const imagesPerRowInput = document.querySelector('input[name="images_per_row"]');
+    const gridPreview = document.querySelector('.grid-preview');
+    
+    if (imagesPerRowInput && gridPreview) {
+        imagesPerRowInput.addEventListener('input', function() {
+            let value = parseInt(this.value) || 8;
+            if (value < 1) value = 1;
+            if (value > 20) value = 20;
+            
+            gridPreview.style.setProperty('--images-per-row', value);
+            
+            // Regenerate grid items
+            gridPreview.innerHTML = '';
+            for (let i = 0; i < value; i++) {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                item.textContent = `Image ${i+1}`;
+                gridPreview.appendChild(item);
+            }
+        });
+    }
+</script>
+
+{% endblock %}
