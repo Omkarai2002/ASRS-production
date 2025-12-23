@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -146,6 +147,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="login-container">
         <div class="login-header">
@@ -155,32 +157,20 @@
 
         <div class="login-form">
             {% if error %}
-                <div class="error-message">{{ error }}</div>
+            <div class="error-message">{{ error }}</div>
             {% endif %}
 
             <form method="post" action="/login">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input
-                        type="text"
-                        id="username"
-                        name="username"
-                        required
-                        placeholder="Enter your username"
-                        autocomplete="username"
-                    />
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="Enter your email"
+                        autocomplete="email" />
                 </div>
 
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        required
-                        placeholder="Enter your password"
-                        autocomplete="current-password"
-                    />
+                    <input type="password" id="password" name="password" required placeholder="Enter your password"
+                        autocomplete="current-password" />
                 </div>
 
                 <button type="submit" class="login-button">Sign In</button>
@@ -192,4 +182,5 @@
         </div>
     </div>
 </body>
+
 </html>

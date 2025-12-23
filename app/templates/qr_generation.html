@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -218,6 +219,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="qr-container">
         <div class="qr-header">
@@ -227,12 +229,12 @@
 
         <div class="qr-content">
             {% if success %}
-                <div class="success-message">{{ success }}</div>
+            <div class="success-message">{{ success }}</div>
             {% endif %}
 
             <div class="form-section">
                 <h2 class="form-title">Single VIN Generation</h2>
-                
+
                 <div class="info-box">
                     Enter a single VIN number and generate a PDF QR code
                 </div>
@@ -240,14 +242,8 @@
                 <form method="post" action="/qr/generate" id="singleVinForm">
                     <div class="form-group">
                         <label for="vin_no">VIN Number</label>
-                        <input 
-                            type="text" 
-                            id="vin_no" 
-                            name="vin_no" 
-                            placeholder="e.g., 1HGCV41JXMN109186"
-                            maxlength="17"
-                            required
-                        />
+                        <input type="text" id="vin_no" name="vin_no" placeholder="e.g., 1HGCV41JXMN109186"
+                            maxlength="17" required />
                     </div>
 
                     <div class="button-group">
@@ -259,7 +255,7 @@
             <div style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
                 <div class="form-section">
                     <h2 class="form-title">Bulk VIN Generation</h2>
-                    
+
                     <div class="info-box">
                         📦 Enter multiple VIN numbers (one per line) to generate QR codes in bulk
                     </div>
@@ -267,12 +263,9 @@
                     <form method="post" action="/qr/generate-bulk" id="bulkVinForm">
                         <div class="form-group">
                             <label for="vins">VIN Numbers (one per line)</label>
-                            <textarea 
-                                id="vins" 
-                                name="vins" 
+                            <textarea id="vins" name="vins"
                                 placeholder="1HGCV41JXMN109186&#10;2HGCV41JXMN109187&#10;3HGCV41JXMN109188"
-                                required
-                            ></textarea>
+                                required></textarea>
                         </div>
 
                         <div class="button-group">
@@ -289,18 +282,18 @@
     </div>
 
     <script>
-        document.getElementById('singleVinForm').addEventListener('submit', function(e) {
+        document.getElementById('singleVinForm').addEventListener('submit', function (e) {
             const vin = document.getElementById('vin_no').value.trim();
-            
-            if (vin.length !== 4) {
+
+            if (vin.length !== 17) {
                 e.preventDefault();
                 alert('VIN number must be exactly 17 characters');
             }
         });
 
-        document.getElementById('bulkVinForm').addEventListener('submit', function(e) {
+        document.getElementById('bulkVinForm').addEventListener('submit', function (e) {
             const vins = document.getElementById('vins').value.trim();
-            
+
             if (!vins) {
                 e.preventDefault();
                 alert('Please enter at least one VIN number');
@@ -308,4 +301,5 @@
         });
     </script>
 </body>
+
 </html>

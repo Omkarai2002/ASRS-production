@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from app.auth.auth import authenticate_user, create_user, get_user_by_username
+from app.auth.auth import authenticate_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -16,22 +16,22 @@ def login_page(request: Request):
 
 
 @router.post("/login", response_class=HTMLResponse)
-async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+async def login(request: Request, email: str = Form(...), password: str = Form(...)):
     """Handle login submission"""
-    user = authenticate_user(username, password)
+    user = authenticate_user(email, password)
     
     if not user:
         return templates.TemplateResponse(
             "login.html",
             {
                 "request": request,
-                "error": "Invalid username or password",
+                "error": "Invalid email or password",
             },
             status_code=401,
         )
     
     # Store user in session
-    request.session["user"] = username
+    request.session["user"] = email
     request.session["user_id"] = user.id
     
     return RedirectResponse("/dashboard", status_code=303)

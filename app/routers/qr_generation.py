@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from backend.services.qr_generation import generate_pdf, generate_bulk_pdf
 import os
+import io
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -15,9 +16,19 @@ def qr_page(request: Request):
 
 
 @router.post("/qr/generate")
-async def generate_qr(request: Request, vin_no: str = Form(...)):
+async def generate_qr(
+    request: Request, 
+    vin_no: str = Form(...), 
+    date: str = Form(None)  # Accept date from form, default to None (today handled in logic if needed or pass explictly)
+):
     """Generate QR code for single VIN"""
     try:
+        user_id = request.session.get("user_id")
+        user_id = int(user_id)
+        if not user_id:
+            # Fallback or error if not logged in - though middleware/frontend should handle this
+            return RedirectResponse("/login", status_code=303)
+
         # Validate VIN
         vin_no = vin_no.strip().upper()
         if len(vin_no) != 17:
@@ -27,19 +38,28 @@ async def generate_qr(request: Request, vin_no: str = Form(...)):
                 status_code=400,
             )
 
+        # Handle Date
+        from datetime import datetime
+        if not date:
+            date_val = datetime.now().date()
+        else:
+            try:
+                date_val = datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                date_val = datetime.now().date()
+
+        # Insert Data
+        from backend.services.data_manager import insert_raw_data
+        unique_id = insert_raw_data(vin_no, date_val, user_id)
+        print(unique_id)
+
         # Generate PDF
-        pdf_bytes = generate_pdf(vin_no, None)
+        pdf_bytes = generate_pdf(vin_no, unique_id)
         
-        # Save temporarily
-        os.makedirs("temp", exist_ok=True)
-        pdf_path = f"temp/QR_{vin_no}.pdf"
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
-        
-        return FileResponse(
-            pdf_path,
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            filename=f"QR_{vin_no}.pdf",
+            headers={"Content-Disposition": f"attachment; filename=QR_Report_{vin_no}.pdf"}
         )
     except Exception as e:
         return templates.TemplateResponse(
@@ -53,10 +73,34 @@ async def generate_qr(request: Request, vin_no: str = Form(...)):
 
 
 @router.post("/qr/generate-bulk")
-async def generate_bulk_qr(request: Request, vins: str = Form(...)):
+async def generate_bulk_qr(
+    request: Request, 
+    vins: str = Form(None), # Made optional to check against file if needed, but user snippet showed file upload OR csv text? 
+    # User snippet: "Using CSV file" -> st.file_uploader.
+    # Current router: "vins: str = Form(...)" implies text area.
+    # I should check if I need to support File upload too?
+    # Existing code uses `vins` text area. I will stick to existing router input signature OR update it?
+    # User request was specifically: "complete these two functions with the refernece of above code"
+    # Above code uses `st.read_csv`.
+    # I should probably update to support file upload if the current router doesn't?
+    # Step 5 showed: vins: str = Form(...).
+    # I will stick to text area for now but add date.
+    date: str = Form(None)
+):
     """Generate QR codes for multiple VINs as a bulk PDF"""
     try:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return RedirectResponse("/login", status_code=303)
+
         # Parse VINs
+        if not vins:
+             return templates.TemplateResponse(
+                "qr_generation.html",
+                {"request": request, "error": "Please provide VINs"},
+                status_code=400,
+            )
+            
         vin_list = [v.strip().upper() for v in vins.strip().split('\n') if v.strip()]
         
         # Validate VINs
@@ -78,19 +122,23 @@ async def generate_bulk_qr(request: Request, vins: str = Form(...)):
                 status_code=400,
             )
         
+        # Handle Date
+        from datetime import datetime
+        if not date:
+            date_val = datetime.now().date()
+        else:
+            try:
+                date_val = datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                date_val = datetime.now().date()
+        
         # Generate bulk PDF
-        pdf_bytes = generate_bulk_pdf(vin_list)
+        pdf_bytes = generate_bulk_pdf(vin_list, date_val, user_id)
         
-        # Save temporarily
-        os.makedirs("temp", exist_ok=True)
-        pdf_path = f"temp/QR_Bulk_{len(vin_list)}_codes.pdf"
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
-        
-        return FileResponse(
-            pdf_path,
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            filename=f"QR_Bulk_{len(vin_list)}_codes.pdf",
+            headers={"Content-Disposition": f"attachment; filename=QR_Bulk_{len(vin_list)}_codes.pdf"}
         )
     except Exception as e:
         return templates.TemplateResponse(

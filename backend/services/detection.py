@@ -24,5 +24,5 @@ def detect_vehicle(image_path, records):
         if area < AREA_THERSHOLD:
             continue
 
-        return False
-    return True
+        return True
+    return False

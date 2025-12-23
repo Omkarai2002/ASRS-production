@@ -11,4 +11,5 @@ class RawData(Base):
     createdAt = Column(Date, nullable=True) 
     updatedAt = Column(Date, nullable=True)
     isDispatched = Column(String(100), nullable=True)
+    user_id = Column(Integer, nullable=True)
     # Add more fields as per your requirements
