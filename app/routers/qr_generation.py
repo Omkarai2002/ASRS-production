@@ -31,12 +31,7 @@ async def generate_qr(
 
         # Validate VIN
         vin_no = vin_no.strip().upper()
-        if len(vin_no) != 17:
-            return templates.TemplateResponse(
-                "qr_generation.html",
-                {"request": request, "error": "VIN must be exactly 17 characters"},
-                status_code=400,
-            )
+
 
         # Handle Date
         from datetime import datetime
@@ -111,16 +106,16 @@ async def generate_bulk_qr(
                 status_code=400,
             )
         
-        invalid_vins = [v for v in vin_list if len(v) != 17]
-        if invalid_vins:
-            return templates.TemplateResponse(
-                "qr_generation.html",
-                {
-                    "request": request,
-                    "error": f"Invalid VINs (must be 17 chars): {', '.join(invalid_vins[:3])}...",
-                },
-                status_code=400,
-            )
+        # invalid_vins = [v for v in vin_list if len(v) != 17]
+        # if invalid_vins:
+        #     return templates.TemplateResponse(
+        #         "qr_generation.html",
+        #         {
+        #             "request": request,
+        #             "error": f"Invalid VINs (must be 17 chars): {', '.join(invalid_vins[:3])}...",
+        #         },
+        #         status_code=400,
+        #     )
         
         # Handle Date
         from datetime import datetime

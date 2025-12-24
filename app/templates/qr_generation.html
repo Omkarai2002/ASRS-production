@@ -285,10 +285,7 @@
         document.getElementById('singleVinForm').addEventListener('submit', function (e) {
             const vin = document.getElementById('vin_no').value.trim();
 
-            if (vin.length !== 17) {
-                e.preventDefault();
-                alert('VIN number must be exactly 17 characters');
-            }
+
         });
 
         document.getElementById('bulkVinForm').addEventListener('submit', function (e) {
