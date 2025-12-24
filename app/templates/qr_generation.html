@@ -123,6 +123,16 @@
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
 
+        .btn-print {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+        }
+
         .btn-secondary {
             background: #f0f0f0;
             color: #333;
@@ -247,7 +257,9 @@
                     </div>
 
                     <div class="button-group">
-                        <button type="submit" class="btn btn-primary">Generate QR Code</button>
+                        <button type="submit" name="action" value="download" class="btn btn-primary">Download QR
+                            Code</button>
+                        <button type="submit" name="action" value="print" class="btn btn-print">Print QR Code</button>
                     </div>
                 </form>
             </div>
@@ -269,7 +281,10 @@
                         </div>
 
                         <div class="button-group">
-                            <button type="submit" class="btn btn-primary">Generate Bulk QR Codes</button>
+                            <button type="submit" name="action" value="download" class="btn btn-primary">Download Bulk
+                                QR Codes</button>
+                            <button type="submit" name="action" value="print" class="btn btn-print">Print Bulk QR
+                                Codes</button>
                         </div>
                     </form>
                 </div>
@@ -284,8 +299,35 @@
     <script>
         document.getElementById('singleVinForm').addEventListener('submit', function (e) {
             const vin = document.getElementById('vin_no').value.trim();
+            const action = e.submitter.value;
 
+            if (action === 'print') {
+                e.preventDefault();
+                const formData = new FormData(this);
+                formData.set('action', 'print');
 
+                fetch('/qr/generate', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = url;
+                        document.body.appendChild(iframe);
+
+                        iframe.onload = function () {
+                            setTimeout(() => {
+                                iframe.contentWindow.print();
+                            }, 250);
+                        };
+                    })
+                    .catch(error => {
+                        alert('Error generating QR code: ' + error.message);
+                    });
+            }
         });
 
         document.getElementById('bulkVinForm').addEventListener('submit', function (e) {
@@ -294,6 +336,37 @@
             if (!vins) {
                 e.preventDefault();
                 alert('Please enter at least one VIN number');
+                return;
+            }
+
+            const action = e.submitter.value;
+
+            if (action === 'print') {
+                e.preventDefault();
+                const formData = new FormData(this);
+                formData.set('action', 'print');
+
+                fetch('/qr/generate-bulk', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = url;
+                        document.body.appendChild(iframe);
+
+                        iframe.onload = function () {
+                            setTimeout(() => {
+                                iframe.contentWindow.print();
+                            }, 250);
+                        };
+                    })
+                    .catch(error => {
+                        alert('Error generating QR codes: ' + error.message);
+                    });
             }
         });
     </script>

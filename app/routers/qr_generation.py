@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from backend.services.qr_generation import generate_pdf, generate_bulk_pdf
 import os
@@ -19,19 +19,18 @@ def qr_page(request: Request):
 async def generate_qr(
     request: Request, 
     vin_no: str = Form(...), 
-    date: str = Form(None)  # Accept date from form, default to None (today handled in logic if needed or pass explictly)
+    date: str = Form(None),
+    action: str = Form("download")  # "download" or "print"
 ):
     """Generate QR code for single VIN"""
     try:
         user_id = request.session.get("user_id")
         user_id = int(user_id)
         if not user_id:
-            # Fallback or error if not logged in - though middleware/frontend should handle this
             return RedirectResponse("/login", status_code=303)
 
         # Validate VIN
         vin_no = vin_no.strip().upper()
-
 
         # Handle Date
         from datetime import datetime
@@ -51,10 +50,16 @@ async def generate_qr(
         # Generate PDF
         pdf_bytes = generate_pdf(vin_no, unique_id)
         
+        # Determine disposition based on action
+        if action == "print":
+            disposition = "inline"  # Opens in browser for printing
+        else:
+            disposition = f"attachment; filename=QR_Report_{vin_no}.pdf"
+        
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=QR_Report_{vin_no}.pdf"}
+            headers={"Content-Disposition": disposition}
         )
     except Exception as e:
         return templates.TemplateResponse(
@@ -70,17 +75,9 @@ async def generate_qr(
 @router.post("/qr/generate-bulk")
 async def generate_bulk_qr(
     request: Request, 
-    vins: str = Form(None), # Made optional to check against file if needed, but user snippet showed file upload OR csv text? 
-    # User snippet: "Using CSV file" -> st.file_uploader.
-    # Current router: "vins: str = Form(...)" implies text area.
-    # I should check if I need to support File upload too?
-    # Existing code uses `vins` text area. I will stick to existing router input signature OR update it?
-    # User request was specifically: "complete these two functions with the refernece of above code"
-    # Above code uses `st.read_csv`.
-    # I should probably update to support file upload if the current router doesn't?
-    # Step 5 showed: vins: str = Form(...).
-    # I will stick to text area for now but add date.
-    date: str = Form(None)
+    vins: str = Form(None),
+    date: str = Form(None),
+    action: str = Form("download")  # "download" or "print"
 ):
     """Generate QR codes for multiple VINs as a bulk PDF"""
     try:
@@ -106,17 +103,6 @@ async def generate_bulk_qr(
                 status_code=400,
             )
         
-        # invalid_vins = [v for v in vin_list if len(v) != 17]
-        # if invalid_vins:
-        #     return templates.TemplateResponse(
-        #         "qr_generation.html",
-        #         {
-        #             "request": request,
-        #             "error": f"Invalid VINs (must be 17 chars): {', '.join(invalid_vins[:3])}...",
-        #         },
-        #         status_code=400,
-        #     )
-        
         # Handle Date
         from datetime import datetime
         if not date:
@@ -130,10 +116,16 @@ async def generate_bulk_qr(
         # Generate bulk PDF
         pdf_bytes = generate_bulk_pdf(vin_list, date_val, user_id)
         
+        # Determine disposition based on action
+        if action == "print":
+            disposition = "inline"  # Opens in browser for printing
+        else:
+            disposition = f"attachment; filename=QR_Bulk_{len(vin_list)}_codes.pdf"
+        
         return StreamingResponse(
             io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=QR_Bulk_{len(vin_list)}_codes.pdf"}
+            headers={"Content-Disposition": disposition}
         )
     except Exception as e:
         return templates.TemplateResponse(
