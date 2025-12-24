@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ASRS - Automated Storage & Retrieval System">
     <title>{% block title %}ASRS - Automated Storage & Retrieval System{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/design-system.css">
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         * {
@@ -242,35 +244,36 @@
 </head>
 <body>
     <!-- Navigation Bar -->
-    <nav class="navbar">
+    <nav class="navbar" role="navigation" aria-label="Main">
         <div class="navbar-container">
-            <a href="/dashboard" class="navbar-brand">ASRS</a>
+            <a href="/dashboard" class="navbar-brand" aria-label="ASRS Home">ASRS</a>
             
-            <ul class="navbar-nav">
-                <li><a href="/dashboard" class="nav-link">Dashboard</a></li>
-                <li><a href="/reports" class="nav-link">Reports</a></li>
-                <li><a href="/visualize" class="nav-link">Visualize</a></li>
-                <li><a href="/qr" class="nav-link">QR Generation</a></li>
-                <li><a href="/settings" class="nav-link">Settings</a></li>
+            <ul class="navbar-nav" role="menubar">
+                <li role="none"><a href="/dashboard" class="nav-link" role="menuitem">Dashboard</a></li>
+                <li role="none"><a href="/reports" class="nav-link" role="menuitem">Reports</a></li>
+                <li role="none"><a href="/visualize" class="nav-link" role="menuitem">Visualize</a></li>
+                <li role="none"><a href="/search" class="nav-link" role="menuitem">🔍 Search</a></li>
+                <li role="none"><a href="/qr" class="nav-link" role="menuitem">QR Generation</a></li>
+                <li role="none"><a href="/settings" class="nav-link" role="menuitem">Settings</a></li>
             </ul>
 
             <div class="navbar-user">
-                <div class="user-info">
+                <div class="user-info" aria-label="User Information">
                     <span>Welcome,</span>
                     <strong>{{ request.session.get('user', 'Guest') }}</strong>
                 </div>
-                <a href="/logout" class="logout-btn">Logout</a>
+                <a href="/logout" class="logout-btn" aria-label="Logout">Logout</a>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main>
+    <main role="main">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer>
+    <footer role="contentinfo">
         <div class="footer-content">
             <p class="footer-text">
                 © 2025 ASRS - Automated Storage & Retrieval System. All rights reserved.

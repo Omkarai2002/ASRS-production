@@ -761,10 +761,6 @@
                 <div class="summary-label">⚠️ Multiple Stickers</div>
                 <div class="summary-count multiple-stickers">${summary.multipleStickers}</div>
               </div>
-              <div class="summary-item non-conformity">
-                <div class="summary-label">🚨 Non-Conformity</div>
-                <div class="summary-count non-conformity">${summary.nonConformity}</div>
-              </div>
               <div class="summary-item other">
                 <div class="summary-label">📝 Other</div>
                 <div class="summary-count other">${summary.other}</div>
@@ -844,10 +840,6 @@
                   <span>Multiple Stickers</span>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-color" style="border-color: #dc3545;"></div>
-                  <span>Non-Conformity</span>
-                </div>
-                <div class="legend-item">
                   <div class="legend-color" style="border-color: #6c757d;"></div>
                   <span>Other</span>
                 </div>
@@ -869,14 +861,11 @@
       empty: 0,
       stickerNotFound: 0,
       multipleStickers: 0,
-      nonConformity: 0,
       other: 0
     };
 
     inferences.forEach(inf => {
-      if (inf.is_non_confirmity) {
-        summary.nonConformity++;
-      } else if (inf.exclusion) {
+      if (inf.exclusion) {
         const exclusionLower = inf.exclusion.toLowerCase();
         if (exclusionLower.includes('empty')) {
           summary.empty++;

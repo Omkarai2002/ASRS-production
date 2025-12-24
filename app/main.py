@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import os
 import logging
 
-from .routers import dashboard, reports, upload, visualize, auth_routes, qr_generation, settings
+from .routers import dashboard, reports, upload, visualize, auth_routes, qr_generation, settings, search
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ app.include_router(upload.router)
 app.include_router(visualize.router)
 app.include_router(qr_generation.router)
 app.include_router(settings.router)
+app.include_router(search.router)
 
 @app.get("/", include_in_schema=False)
 def root(request: Request):

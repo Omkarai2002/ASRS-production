@@ -448,6 +448,10 @@
     const exclusionStatsJson = '{{ exclusion_stats_json | safe }}';
     const exclusionStats = JSON.parse(exclusionStatsJson);
     
+    // Parse daily data from backend
+    const dailyDataJson = '{{ daily_data_json | safe }}';
+    const dailyData = JSON.parse(dailyDataJson);
+    
     // Exclusion Status Pie Chart
     const ctxExclusion = document.getElementById('exclusionChart');
     if (ctxExclusion) {
@@ -552,16 +556,25 @@
         });
     }
 
-    // Activity Chart
+    // Activity Chart with real data
     const ctx = document.getElementById('activityChart');
     if (ctx) {
+        // Format dates and extract data from dailyData
+        const labels = dailyData.map(item => {
+            const date = new Date(item.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        
+        const reportCounts = dailyData.map(item => item.reports);
+        const itemCounts = dailyData.map(item => item.items);
+        
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+                labels: labels,
                 datasets: [{
                     label: 'Reports Created',
-                    data: [12, 19, 8, 15, 13, 17, 14],
+                    data: reportCounts,
                     borderColor: '#667eea',
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
                     tension: 0.4,
@@ -569,12 +582,13 @@
                     pointBackgroundColor: '#667eea',
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 3
                 },
                 {
                     label: 'Items Detected',
-                    data: [8, 12, 10, 14, 11, 15, 12],
+                    data: itemCounts,
                     borderColor: '#764ba2',
                     backgroundColor: 'rgba(118, 75, 162, 0.1)',
                     tension: 0.4,
@@ -582,13 +596,18 @@
                     pointBackgroundColor: '#764ba2',
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    borderWidth: 3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
                     legend: {
                         display: true,
@@ -596,20 +615,40 @@
                         labels: {
                             font: { size: 14, weight: '600' },
                             padding: 20,
-                            usePointStyle: true
+                            usePointStyle: true,
+                            boxWidth: 10
                         }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { size: 13, weight: '600' },
+                        bodyFont: { size: 12 },
+                        padding: 12,
+                        borderRadius: 6,
+                        displayColors: true
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(0, 0, 0, 0.05)'
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            stepSize: 1,
+                            font: { size: 11 }
                         }
                     },
                     x: {
                         grid: {
-                            display: false
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            font: { size: 11 }
                         }
                     }
                 }

@@ -299,7 +299,7 @@ def get_report_details(report_id: int):
 
 @router.get("/api/report/{report_id}/export/excel")
 def export_report_excel(request: Request, report_id: int):
-    """Export report data to Excel file"""
+    """Export report data to Excel file with summary and pie chart"""
     # Check if user is logged in and owns this report
     user_id = request.session.get("user_id")
     if not user_id:
@@ -307,8 +307,12 @@ def export_report_excel(request: Request, report_id: int):
     
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.drawing.image import Image as XLImage
     from io import BytesIO
     from fastapi.responses import StreamingResponse
+    import matplotlib.pyplot as plt
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-GUI backend
     
     db = None
     try:
@@ -325,6 +329,31 @@ def export_report_excel(request: Request, report_id: int):
             Inference.report_id == report_id
         ).order_by(Inference.id.desc()).all()
         
+        # Calculate summary statistics
+        summary = calculate_summary_for_export(inferences)
+        
+        # Get user settings for location calculation
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        if not user_settings:
+            user_settings = UserSettings(user_id=user_id)
+        
+        # Calculate locations for each inference
+        images_per_row = user_settings.images_per_row
+        level_prefix = user_settings.level_prefix
+        inferences_with_locations = []
+        
+        for idx, inf in enumerate(inferences):
+            level_number = (idx // images_per_row) + 1
+            position_in_level = (idx % images_per_row) + 1
+            level_name = f"{level_prefix}{level_number}-{position_in_level}"
+            inferences_with_locations.append({
+                'inference': inf,
+                'level_name': level_name,
+                'level_number': level_number,
+                'position': position_in_level
+            })
+
+        
         # Create workbook
         wb = Workbook()
         ws = wb.active
@@ -333,6 +362,8 @@ def export_report_excel(request: Request, report_id: int):
         # Define styles
         header_fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
         header_font = Font(bold=True, color="FFFFFF", size=12)
+        summary_fill = PatternFill(start_color="e8eef7", end_color="e8eef7", fill_type="solid")
+        summary_font = Font(bold=True, size=11)
         border = Border(
             left=Side(style='thin'),
             right=Side(style='thin'),
@@ -340,7 +371,7 @@ def export_report_excel(request: Request, report_id: int):
             bottom=Side(style='thin')
         )
         
-        # Add report header info
+        # ====== SECTION 1: Report Header ======
         ws['A1'] = f"Report: {report.report_name}"
         ws['A1'].font = Font(bold=True, size=14)
         ws['A2'] = f"Created: {report.createdAt}"
@@ -348,11 +379,88 @@ def export_report_excel(request: Request, report_id: int):
         ws['A3'] = f"Total Items: {len(inferences)}"
         ws['A3'].font = Font(size=11)
         
-        # Add blank row
+        # ====== SECTION 2: Summary Statistics ======
         current_row = 5
+        ws[f'A{current_row}'] = "📊 SUMMARY STATISTICS"
+        ws[f'A{current_row}'].font = Font(bold=True, size=12, color="FFFFFF")
+        ws[f'A{current_row}'].fill = PatternFill(start_color="28a745", end_color="28a745", fill_type="solid")
+        ws.merge_cells(f'A{current_row}:B{current_row}')
+        
+        current_row += 1
+        
+        # Summary items
+        summary_items = [
+            ("✓ Filled", summary.get("filled", 0)),
+            ("⚪ Empty Skid", summary.get("empty", 0)),
+            ("❌ Sticker Not Found", summary.get("stickerNotFound", 0)),
+            ("⚠️ Multiple Stickers", summary.get("multipleStickers", 0)),
+            ("📝 Other", summary.get("other", 0))
+        ]
+        
+        for label, count in summary_items:
+            ws[f'A{current_row}'] = label
+            ws[f'A{current_row}'].fill = summary_fill
+            ws[f'A{current_row}'].font = summary_font
+            ws[f'B{current_row}'] = count
+            ws[f'B{current_row}'].fill = summary_fill
+            ws[f'B{current_row}'].font = summary_font
+            ws[f'B{current_row}'].alignment = Alignment(horizontal="center")
+            current_row += 1
+        
+        # ====== SECTION 3: Pie Chart ======
+        # Create pie chart image
+        chart_img_path = None
+        try:
+            fig, ax = plt.subplots(figsize=(8, 6))
+            labels = [item[0] for item in summary_items]
+            sizes = [item[1] for item in summary_items]
+            colors = ['#28a745', '#ffc107', '#e83e8c', '#fd7e14', '#6c757d']
+            
+            # Filter out zero values
+            non_zero_labels = [l for l, s in zip(labels, sizes) if s > 0]
+            non_zero_sizes = [s for s in sizes if s > 0]
+            non_zero_colors = [c for c, s in zip(colors, sizes) if s > 0]
+            
+            if non_zero_sizes:
+                ax.pie(non_zero_sizes, labels=non_zero_labels, colors=non_zero_colors, 
+                       autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10})
+                ax.set_title(f"Item Distribution - {report.report_name}", fontweight='bold', fontsize=12)
+                
+                # Save chart to bytes
+                chart_img_path = BytesIO()
+                plt.savefig(chart_img_path, format='png', bbox_inches='tight', dpi=100)
+                chart_img_path.seek(0)
+                plt.close(fig)
+                
+                # Insert chart into Excel
+                current_row += 2
+                ws[f'A{current_row}'] = "📈 CHART"
+                ws[f'A{current_row}'].font = Font(bold=True, size=11)
+                
+                current_row += 1
+                chart_xl_image = XLImage(chart_img_path)
+                chart_xl_image.width = 400
+                chart_xl_image.height = 300
+                ws.add_image(chart_xl_image, f'A{current_row}')
+                
+                current_row += 16  # Approximate rows taken by image
+            else:
+                plt.close(fig)
+        except Exception as e:
+            logger.warning(f"Could not generate pie chart for Excel export: {str(e)}")
+        
+        # ====== SECTION 4: Data Table ======
+        current_row += 2
+        ws[f'A{current_row}'] = "📋 DETAILED DATA"
+        ws[f'A{current_row}'].font = Font(bold=True, size=12, color="FFFFFF")
+        ws[f'A{current_row}'].fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
+        ws.merge_cells(f'A{current_row}:J{current_row}')
+
+        
+        current_row += 1
         
         # Define headers
-        headers = ["Item #", "Unique ID", "VIN Number", "Quantity", "Image Name", "Exclusion", "Non-Conformity", "Created Date", "Download Image"]
+        headers = ["Item #", "Location", "Unique ID", "VIN Number", "Quantity", "Image Name", "Exclusion", "Created Date", "Download Image", "Status"]
         
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=current_row, column=col)
@@ -363,18 +471,21 @@ def export_report_excel(request: Request, report_id: int):
             cell.border = border
         
         # Add data rows
-        for idx, inference in enumerate(inferences, 1):
+        for idx, item in enumerate(inferences_with_locations, 1):
             row = current_row + idx
+            inference = item['inference']
+            status = "Non-Conformity" if inference.is_non_confirmity else "Confirmed"
             data = [
                 idx,
+                item['level_name'],  # Location (e.g., L1-1)
                 inference.unique_id or "",
                 inference.vin_no or "",
                 inference.quantity or 0,
                 inference.image_name or "",
                 inference.exclusion or "",
-                "Yes" if inference.is_non_confirmity else "No",
                 str(inference.createdAt) if inference.createdAt else "",
-                inference.s3_obj_url or ""
+                inference.s3_obj_url or "",
+                status
             ]
             
             for col, value in enumerate(data, 1):
@@ -383,22 +494,25 @@ def export_report_excel(request: Request, report_id: int):
                 cell.border = border
                 cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
                 
-                # Make S3 URL a hyperlink in the last column
-                if col == len(data) and inference.s3_obj_url:
+                # Make S3 URL a hyperlink
+                if col == 9 and inference.s3_obj_url:
                     cell.hyperlink = inference.s3_obj_url
                     cell.value = "Download"
                     cell.font = Font(color="0563C1", underline="single")
         
         # Adjust column widths
         ws.column_dimensions['A'].width = 8
-        ws.column_dimensions['B'].width = 20
-        ws.column_dimensions['C'].width = 20
-        ws.column_dimensions['D'].width = 12
-        ws.column_dimensions['E'].width = 25
-        ws.column_dimensions['F'].width = 15
-        ws.column_dimensions['G'].width = 15
-        ws.column_dimensions['H'].width = 20
-        ws.column_dimensions['I'].width = 18
+        ws.column_dimensions['B'].width = 12  # Location (L1-1)
+        ws.column_dimensions['C'].width = 20  # Unique ID
+        ws.column_dimensions['D'].width = 20  # VIN
+        ws.column_dimensions['E'].width = 10  # Quantity
+        ws.column_dimensions['F'].width = 25  # Image Name
+        ws.column_dimensions['G'].width = 18  # Exclusion
+        ws.column_dimensions['H'].width = 18  # Created Date
+        ws.column_dimensions['I'].width = 15  # Download
+        ws.column_dimensions['J'].width = 15  # Status
+
+        ws.column_dimensions['I'].width = 15
         
         # Save to BytesIO
         excel_file = BytesIO()
@@ -419,3 +533,33 @@ def export_report_excel(request: Request, report_id: int):
     finally:
         if db:
             db.close()
+
+
+def calculate_summary_for_export(inferences):
+    """Calculate summary statistics from inferences"""
+    summary = {
+        "filled": 0,
+        "empty": 0,
+        "stickerNotFound": 0,
+        "multipleStickers": 0,
+        "other": 0
+    }
+    
+    for inf in inferences:
+        if inf.exclusion:
+            exclusion_lower = inf.exclusion.lower()
+            if 'empty' in exclusion_lower:
+                summary["empty"] += 1
+            elif 'sticker' in exclusion_lower and 'not' in exclusion_lower:
+                summary["stickerNotFound"] += 1
+            elif 'multiple' in exclusion_lower:
+                summary["multipleStickers"] += 1
+            elif 'filled' in exclusion_lower:
+                summary["filled"] += 1
+            else:
+                summary["other"] += 1
+        else:
+            summary["filled"] += 1
+    
+    return summary
+

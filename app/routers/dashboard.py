@@ -98,6 +98,30 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
         # Get all user's reports for dropdown filter
         all_user_reports = db.query(Report).filter(Report.user_id == user_id).order_by(Report.createdAt.desc()).all()
         
+        # Calculate daily statistics for line graph (last 30 days)
+        from datetime import timedelta
+        end_date = date.today()
+        start_date = end_date - timedelta(days=29)  # Last 30 days
+        
+        daily_data = []
+        current_date = start_date
+        while current_date <= end_date:
+            day_reports = db.query(Report).filter(
+                Report.user_id == user_id,
+                func.date(Report.createdAt) == current_date
+            ).count()
+            day_inferences = db.query(Inference).filter(
+                Inference.user_id == user_id,
+                func.date(Inference.createdAt) == current_date
+            ).count()
+            
+            daily_data.append({
+                "date": str(current_date),
+                "reports": day_reports,
+                "items": day_inferences
+            })
+            current_date += timedelta(days=1)
+        
         system_status = "Active"
         
         return templates.TemplateResponse("dashboard.html", {
@@ -112,7 +136,9 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
             "selected_report_id": report_id_filter,
             "all_reports": all_user_reports,
             "exclusion_stats": exclusion_stats,
-            "exclusion_stats_json": json.dumps(exclusion_stats)
+            "exclusion_stats_json": json.dumps(exclusion_stats),
+            "daily_data": daily_data,
+            "daily_data_json": json.dumps(daily_data)
         })
     except Exception as e:
         return templates.TemplateResponse("dashboard.html", {
@@ -124,7 +150,9 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
             "error": str(e),
             "exclusion_stats": {"empty_skid": 0, "sticker_not_found": 0, "multiple_stickers": 0, "filled": 0},
             "exclusion_stats_json": json.dumps({"empty_skid": 0, "sticker_not_found": 0, "multiple_stickers": 0, "filled": 0}),
-            "all_reports": []
+            "all_reports": [],
+            "daily_data": [],
+            "daily_data_json": json.dumps([])
         })
     finally:
         db.close()
