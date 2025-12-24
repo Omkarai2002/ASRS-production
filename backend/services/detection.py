@@ -2,8 +2,17 @@ from ultralytics import YOLO
 
 CONF_THERSHOLD = 0.5
 AREA_THERSHOLD = 5000000
+
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = YOLO('trained_models/esrsyolo11 1.pt')
+    return _model
+
 def detect_vehicle(image_path, records):
-    model = YOLO('trained_models/esrsyolo11 1.pt')
+    model = get_model()
     preds = model.predict(image_path)[0]
 
     for box in preds.boxes:
