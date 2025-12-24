@@ -2,7 +2,7 @@
 
 import os
 import shutil
-import multiprocessing
+import multiprocessing as mp
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from backend.services.google_ocr import OCRClient
 from backend.services.annotations_parser import AnnotationsParser
@@ -13,31 +13,27 @@ from backend.models.inference import Inference
 from backend.services.data_manager import upload_result, get_record
 import logging
 
+# Hard Requirement: Set start method to 'spawn' to avoid CUDA/Torch issues with fork
+# force=True prevents errors if it was already set (e.g. by another module)
+try:
+    mp.set_start_method("spawn", force=True)
+except RuntimeError:
+    pass  # Context might be already set
+
 logger = logging.getLogger(__name__)
 
 ocr_client = OCRClient()
 parser = AnnotationsParser()
 
-# Global ProcessPoolExecutor for CPU-bound tasks (Detection)
-_process_pool = None
-
-def get_process_pool():
-    global _process_pool
-    if _process_pool is None:
-        # Use 'spawn' for compatibility with PyTorch/Ultralytics
-        ctx = multiprocessing.get_context('spawn')
-        # Limit processes to avoid OOM or CPU contention
-        # max_workers = min(os.cpu_count() or 1, 4)
-        max_workers = 8
-        _process_pool = ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx)
-    return _process_pool
+# Global ProcessPoolExecutor REMOVED to ensure clean shutdown
+# Pools will be created per-request using context managers
 
 # Maximum number of concurrent USER uploads (not images)
 # Each user's images are processed sequentially
 MAX_CONCURRENT_USERS = 8
 
 
-def process_single_image(image_path):
+def process_single_image(image_path, process_pool):
     """
     Process a single image:
     - Run OCR
@@ -50,9 +46,9 @@ def process_single_image(image_path):
     records = [get_record(unique_id[0]) for unique_id in unique_ids]  # NEW LINE
     # No DB lookup anymore (get_record deleted)
     
-    # Offload detection to ProcessPoolExecutor
-    pool = get_process_pool()
-    future = pool.submit(detect_vehicle, image_path, unique_ids)
+    # Offload detection to the passed ProcessPoolExecutor
+    # This prevents creating a new pool for every image
+    future = process_pool.submit(detect_vehicle, image_path, unique_ids)
     detection = future.result()
 
     print("detections: ",detection)
@@ -61,7 +57,7 @@ def process_single_image(image_path):
     return build_result(image_name, records, detection)
 
 
-def process_single_image_pipeline(image_path, report_id, user_id, idx, total_files):
+def process_single_image_pipeline(image_path, report_id, user_id, idx, total_files, process_pool):
     """
     Helper function to run the full pipeline for one image.
     Executed in a Thread (via ThreadPoolExecutor).
@@ -71,7 +67,7 @@ def process_single_image_pipeline(image_path, report_id, user_id, idx, total_fil
         logger.info(f"User {user_id}: Processing image {idx}/{total_files}: {image_name}")
         
         # 1. Process the image (OCR + Detection in ProcessPool)
-        results = process_single_image(image_path)
+        results = process_single_image(image_path, process_pool)
 
         # 2. Upload to S3
         s3_key, s3_url = upload_images(image_path)
@@ -136,19 +132,25 @@ def process_user_report_concurrently(report_dir, report_id, user_id):
         # We cap workers to avoid too many DB connections or rate limits
         max_threads = min(8, total_files)
         
-        with ThreadPoolExecutor(max_workers=max_threads) as executor:
-            # Submit all tasks
-            future_to_file = {
-                executor.submit(process_single_image_pipeline, img_path, report_id, user_id, i, total_files): img_path 
-                for i, img_path in enumerate(image_files, 1)
-            }
-            
-            for future in as_completed(future_to_file):
-                success, count = future.result()
-                if success:
-                    total_results += count
-                else:
-                    failed_count += 1
+        # Use Context Managers for strict cleanup!
+        # This ensures pools are closed and processes joined.
+        # spawn is required for CUDA/Torch compatibility.
+        mp_context = mp.get_context('spawn')
+        
+        with ProcessPoolExecutor(max_workers=8, mp_context=mp_context) as process_pool:
+            with ThreadPoolExecutor(max_workers=max_threads) as thread_pool:
+                # Submit all tasks
+                future_to_file = {
+                    thread_pool.submit(process_single_image_pipeline, img_path, report_id, user_id, i, total_files, process_pool): img_path 
+                    for i, img_path in enumerate(image_files, 1)
+                }
+                
+                for future in as_completed(future_to_file):
+                    success, count = future.result()
+                    if success:
+                        total_results += count
+                    else:
+                        failed_count += 1
         
         success_status = (failed_count == 0)
         logger.info(f"User {user_id}: Completed {total_files - failed_count}/{total_files} images, {total_results} total results")
