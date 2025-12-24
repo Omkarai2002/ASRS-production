@@ -27,7 +27,8 @@ def get_process_pool():
         # Use 'spawn' for compatibility with PyTorch/Ultralytics
         ctx = multiprocessing.get_context('spawn')
         # Limit processes to avoid OOM or CPU contention
-        max_workers = min(os.cpu_count() or 1, 4)
+        # max_workers = min(os.cpu_count() or 1, 4)
+        max_workers = 8
         _process_pool = ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx)
     return _process_pool
 
