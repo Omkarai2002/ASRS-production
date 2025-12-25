@@ -17,3 +17,6 @@ reportlab
 pillow
 openpyxl
 regex
+opencv-python
+reportlab
+matplotlib

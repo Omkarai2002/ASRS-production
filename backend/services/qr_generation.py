@@ -9,127 +9,94 @@ from reportlab.lib.utils import ImageReader
 from datetime import datetime
 
 
-def generate_qr_image(data: str) -> ImageReader:
-    """
-    Generate QR code image from data string
-    
-    Args:
-        data: The data to encode (e.g., VIN number)
-    
-    Returns:
-        ImageReader object containing QR code image
-    """
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=2,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    
-    # Convert to image
-    qr_image = qr.make_image(fill_color="black", back_color="white")
-    
-    # Convert PIL image to ImageReader
-    image_bytes = BytesIO()
-    qr_image.save(image_bytes, format='PNG')
-    image_bytes.seek(0)
-    
-    return ImageReader(image_bytes)
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from backend.services.data_manager import insert_raw_data
 
-
-def generate_pdf(vin_no: str, metadata: dict = None) -> bytes:
+def draw_qr_page(c, vin_no, unique_id):
     """
-    Generate a single page PDF with QR code for VIN
+    Draws a single page with QR code on the given canvas.
+    Adapted from user snippet.
+    """
+    page_width, page_height = A4
+
+    # ---- BORDER ----
+    margin = 7 * mm
+    c.setLineWidth(3)
+    c.rect(margin, margin, page_width - 2 * margin, page_height - 2 * margin)
+
+    # ---- VIN NO (top text) ----
+    vin_font_size = 40
+    c.setFont("Helvetica-Bold", vin_font_size)
     
-    Args:
-        vin_no: VIN number (17 characters)
-        metadata: Optional metadata dictionary
-    
-    Returns:
-        PDF file as bytes
+    text_width = stringWidth(str(vin_no), "Helvetica-Bold", vin_font_size)
+    c.drawString((page_width - text_width) / 2, page_height - 40 * mm, str(vin_no))
+
+    # ---- QR CODE ----
+    qr_size = 180 * mm  # large QR
+    qr = qrcode.QRCode(box_size=10, border=1)
+    qr.add_data(f"VIN NO: {vin_no} UNIQUE ID: {unique_id}")
+    qr.make()
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    qr_x = (page_width - qr_size) / 2
+    qr_y = (page_height / 2) - (qr_size / 2)
+    c.drawImage(ImageReader(img), qr_x, qr_y, qr_size, qr_size)
+
+    # ---- UNIQUE ID (bottom text) ----
+    uid_font_size = 115
+    c.setFont("Helvetica-Bold", uid_font_size)
+    uid_text_width = stringWidth(unique_id, "Helvetica-Bold", uid_font_size)
+
+    # Auto-scale text if it's too wide
+    available_width = page_width - 2 * margin - 10 * mm
+    if uid_text_width > available_width:
+        scale_factor = available_width / uid_text_width
+        uid_font_size *= scale_factor
+        c.setFont("Helvetica-Bold", uid_font_size)
+        uid_text_width = stringWidth(unique_id, "Helvetica-Bold", uid_font_size)
+
+    c.drawString((page_width - uid_text_width) / 2, margin + 20 * mm, unique_id)
+
+def generate_pdf(vin_no: str, unique_id: str) -> bytes:
+    """
+    Generate a two-page PDF with QR code for VIN/UID
     """
     pdf_buffer = BytesIO()
+    c = canvas.Canvas(pdf_buffer, pagesize=A4)
     
-    # Create PDF with letter size
-    c = canvas.Canvas(pdf_buffer, pagesize=letter)
-    width, height = letter
+    # First Copy
+    draw_qr_page(c, vin_no, unique_id)
+    c.showPage()
     
-    # Title
-    c.setFont("Helvetica-Bold", 24)
-    c.drawString(inch, height - inch, "QR Code - Vehicle")
-    
-    # VIN Info
-    c.setFont("Helvetica", 12)
-    c.drawString(inch, height - 1.5*inch, f"VIN: {vin_no}")
-    c.drawString(inch, height - 1.8*inch, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Generate and draw QR code
-    qr_image = generate_qr_image(vin_no)
-    qr_size = 3 * inch
-    
-    # Center QR code
-    qr_x = (width - qr_size) / 2
-    qr_y = (height - qr_size) / 2 - 0.5*inch
-    
-    c.drawImage(qr_image, qr_x, qr_y, width=qr_size, height=qr_size)
-    
-    # Footer
-    c.setFont("Helvetica", 10)
-    c.setFillColor("gray")
-    c.drawString(inch, 0.5*inch, "ASRS - Automated Storage & Retrieval System")
+    # Second Copy
+    draw_qr_page(c, vin_no, unique_id)
+    c.showPage()
     
     c.save()
     pdf_buffer.seek(0)
-    
     return pdf_buffer.getvalue()
 
 
-def generate_bulk_pdf(vin_list: list) -> bytes:
+def generate_bulk_pdf(vin_list: list, date_val, user_id: int) -> bytes:
     """
-    Generate a PDF with multiple QR codes (one per page)
-    
-    Args:
-        vin_list: List of VIN numbers
-    
-    Returns:
-        PDF file as bytes
+    Generates a multi-page PDF with QR codes for each VIN.
+    Inserts data into DB for each VIN.
     """
     pdf_buffer = BytesIO()
+    c = canvas.Canvas(pdf_buffer, pagesize=A4)
     
-    # Create PDF
-    c = canvas.Canvas(pdf_buffer, pagesize=letter)
-    width, height = letter
-    
-    for idx, vin_no in enumerate(vin_list):
-        if idx > 0:
-            c.showPage()  # New page for each VIN
+    for vin_no in vin_list:
+        unique_id = insert_raw_data(vin_no, date_val, user_id)
         
-        # Title
-        c.setFont("Helvetica-Bold", 20)
-        c.drawString(inch, height - 0.8*inch, "QR Code - Vehicle")
+        # First Copy
+        draw_qr_page(c, vin_no, unique_id)
+        c.showPage()
         
-        # VIN Info
-        c.setFont("Helvetica", 12)
-        c.drawString(inch, height - 1.3*inch, f"VIN: {vin_no}")
-        c.drawString(inch, height - 1.6*inch, f"Code {idx + 1} of {len(vin_list)}")
-        c.drawString(inch, height - 1.9*inch, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # Generate and draw QR code
-        qr_image = generate_qr_image(vin_no)
-        qr_size = 4 * inch
-        
-        # Center QR code
-        qr_x = (width - qr_size) / 2
-        qr_y = (height - qr_size) / 2 - 0.5*inch
-        
-        c.drawImage(qr_image, qr_x, qr_y, width=qr_size, height=qr_size)
-        
-        # Footer
-        c.setFont("Helvetica", 9)
-        c.setFillColor("gray")
-        c.drawString(inch, 0.5*inch, "ASRS - Automated Storage & Retrieval System")
+        # Second Copy
+        draw_qr_page(c, vin_no, unique_id)
+        c.showPage()
     
     c.save()
     pdf_buffer.seek(0)

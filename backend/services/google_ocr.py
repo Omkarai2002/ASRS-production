@@ -19,10 +19,10 @@ class OCRClient:
         return response.text_annotations
 
 
-if __name__ == '__main__':
-    ocr_client = OCRClient()
-    image = cv2.imread('/home/cyrenix/Downloads/IMG-20251117-WA0006.jpg')
-    # image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    annotations = ocr_client.get_annotations(image)
-    for annotation in annotations:
-        print(annotation.description)
+# if __name__ == '__main__':
+#     ocr_client = OCRClient()
+#     image = cv2.imread('/home/cyrenix/Downloads/IMG-20251117-WA0006.jpg')
+#     # image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+#     annotations = ocr_client.get_annotations(image)
+#     for annotation in annotations:
+#         print(annotation.description)

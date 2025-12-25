@@ -33,15 +33,22 @@ def close_db(db: Session):
 
 @router.get("/reports", response_class=HTMLResponse)
 def reports_page(request: Request, search: str = None):
-    """Display all reports with search capability"""
+    """Display all reports for logged-in user with search capability"""
+    # Check if user is logged in
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse("/login", status_code=303)
+    
     db = get_db()
     try:
-        # Get all reports with their inference counts
+        # Get reports ONLY for the logged-in user, ordered by latest first
         query = db.query(
             Report.id,
             Report.report_name,
             Report.createdAt,
             func.count(Inference.id).label('inference_count')
+        ).filter(
+            Report.user_id == user_id  # FILTER BY USER_ID
         ).outerjoin(
             Inference, Report.id == Inference.report_id
         ).group_by(Report.id).order_by(Report.createdAt.desc())
@@ -71,6 +78,11 @@ async def create_report_endpoint(
     files: list[UploadFile] = File(...)
 ):
     """Create a new report with file uploads"""
+    # Check if user is logged in
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return RedirectResponse("/login", status_code=303)
+    
     try:
         if not report_name or not report_name.strip():
             return RedirectResponse(url="/reports?error=Report name is required", status_code=303)
@@ -94,11 +106,11 @@ async def create_report_endpoint(
                 with open(file_path, "wb") as f:
                     f.write(await file.read())
 
-        # Create report in database
-        report_id = create_report(report_name)
+        # Create report in database WITH USER_ID
+        report_id = create_report(report_name, user_id)
 
         # Queue background image processing task
-        background_tasks.add_task(get_inferences, report_dir, report_id)
+        background_tasks.add_task(get_inferences, report_dir, report_id, user_id)
 
         return RedirectResponse(url="/reports?success=Report created successfully", status_code=303)
     except Exception as e:

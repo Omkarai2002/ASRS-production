@@ -1,5 +1,5 @@
 # backend/models/report.py
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from backend.database import Base
 
 class Report(Base):
@@ -8,3 +8,4 @@ class Report(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     report_name = Column(String(25), nullable=True)   # matches RDS
     createdAt = Column(Date, nullable=True)           # matches RDS
+    user_id = Column(Integer, nullable=True)          # NEW: Link to User who owns this report

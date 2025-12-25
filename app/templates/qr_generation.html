@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -122,6 +123,16 @@
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
 
+        .btn-print {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.3);
+        }
+
         .btn-secondary {
             background: #f0f0f0;
             color: #333;
@@ -218,6 +229,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="qr-container">
         <div class="qr-header">
@@ -227,12 +239,12 @@
 
         <div class="qr-content">
             {% if success %}
-                <div class="success-message">{{ success }}</div>
+            <div class="success-message">{{ success }}</div>
             {% endif %}
 
             <div class="form-section">
                 <h2 class="form-title">Single VIN Generation</h2>
-                
+
                 <div class="info-box">
                     Enter a single VIN number and generate a PDF QR code
                 </div>
@@ -240,18 +252,14 @@
                 <form method="post" action="/qr/generate" id="singleVinForm">
                     <div class="form-group">
                         <label for="vin_no">VIN Number</label>
-                        <input 
-                            type="text" 
-                            id="vin_no" 
-                            name="vin_no" 
-                            placeholder="e.g., 1HGCV41JXMN109186"
-                            maxlength="17"
-                            required
-                        />
+                        <input type="text" id="vin_no" name="vin_no" placeholder="e.g., 1HGCV41JXMN109186"
+                            maxlength="17" required />
                     </div>
 
                     <div class="button-group">
-                        <button type="submit" class="btn btn-primary">Generate QR Code</button>
+                        <button type="submit" name="action" value="download" class="btn btn-primary">Download QR
+                            Code</button>
+                        <button type="submit" name="action" value="print" class="btn btn-print">Print QR Code</button>
                     </div>
                 </form>
             </div>
@@ -259,7 +267,7 @@
             <div style="border-top: 2px solid #e0e0e0; padding-top: 30px; margin-top: 30px;">
                 <div class="form-section">
                     <h2 class="form-title">Bulk VIN Generation</h2>
-                    
+
                     <div class="info-box">
                         📦 Enter multiple VIN numbers (one per line) to generate QR codes in bulk
                     </div>
@@ -267,16 +275,16 @@
                     <form method="post" action="/qr/generate-bulk" id="bulkVinForm">
                         <div class="form-group">
                             <label for="vins">VIN Numbers (one per line)</label>
-                            <textarea 
-                                id="vins" 
-                                name="vins" 
+                            <textarea id="vins" name="vins"
                                 placeholder="1HGCV41JXMN109186&#10;2HGCV41JXMN109187&#10;3HGCV41JXMN109188"
-                                required
-                            ></textarea>
+                                required></textarea>
                         </div>
 
                         <div class="button-group">
-                            <button type="submit" class="btn btn-primary">Generate Bulk QR Codes</button>
+                            <button type="submit" name="action" value="download" class="btn btn-primary">Download Bulk
+                                QR Codes</button>
+                            <button type="submit" name="action" value="print" class="btn btn-print">Print Bulk QR
+                                Codes</button>
                         </div>
                     </form>
                 </div>
@@ -289,23 +297,95 @@
     </div>
 
     <script>
-        document.getElementById('singleVinForm').addEventListener('submit', function(e) {
-            const vin = document.getElementById('vin_no').value.trim();
-            
-            if (vin.length !== 4) {
+        // Intercept Enter key on VIN input to trigger Print action
+        document.getElementById('vin_no').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
                 e.preventDefault();
-                alert('VIN number must be exactly 17 characters');
+                // Find the print button and trigger its click or submit logic
+                // Using requestSubmit on the form with the print button as the submitter
+                const printBtn = document.querySelector('button[name="action"][value="print"]');
+                if (printBtn) {
+                    // We cannot just click() because it might not trigger the submit event correctly for the handler
+                    // But the handler relies on 'submit' event. 
+                    // form.requestSubmit(submitter) is the modern way to do this.
+                    document.getElementById('singleVinForm').requestSubmit(printBtn);
+                }
             }
         });
 
-        document.getElementById('bulkVinForm').addEventListener('submit', function(e) {
+        document.getElementById('singleVinForm').addEventListener('submit', function (e) {
+            const vin = document.getElementById('vin_no').value.trim();
+            const action = e.submitter.value;
+
+            if (action === 'print') {
+                e.preventDefault();
+                const formData = new FormData(this);
+                formData.set('action', 'print');
+
+                fetch('/qr/generate', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = url;
+                        document.body.appendChild(iframe);
+
+                        iframe.onload = function () {
+                            setTimeout(() => {
+                                iframe.contentWindow.print();
+                            }, 250);
+                        };
+                    })
+                    .catch(error => {
+                        alert('Error generating QR code: ' + error.message);
+                    });
+            }
+        });
+
+        document.getElementById('bulkVinForm').addEventListener('submit', function (e) {
             const vins = document.getElementById('vins').value.trim();
-            
+
             if (!vins) {
                 e.preventDefault();
                 alert('Please enter at least one VIN number');
+                return;
+            }
+
+            const action = e.submitter.value;
+
+            if (action === 'print') {
+                e.preventDefault();
+                const formData = new FormData(this);
+                formData.set('action', 'print');
+
+                fetch('/qr/generate-bulk', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const iframe = document.createElement('iframe');
+                        iframe.style.display = 'none';
+                        iframe.src = url;
+                        document.body.appendChild(iframe);
+
+                        iframe.onload = function () {
+                            setTimeout(() => {
+                                iframe.contentWindow.print();
+                            }, 250);
+                        };
+                    })
+                    .catch(error => {
+                        alert('Error generating QR codes: ' + error.message);
+                    });
             }
         });
     </script>
 </body>
+
 </html>

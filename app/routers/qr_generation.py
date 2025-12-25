@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Request, Form
-from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from backend.services.qr_generation import generate_pdf, generate_bulk_pdf
 import os
+import io
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -15,31 +16,50 @@ def qr_page(request: Request):
 
 
 @router.post("/qr/generate")
-async def generate_qr(request: Request, vin_no: str = Form(...)):
+async def generate_qr(
+    request: Request, 
+    vin_no: str = Form(...), 
+    date: str = Form(None),
+    action: str = Form("download")  # "download" or "print"
+):
     """Generate QR code for single VIN"""
     try:
+        user_id = request.session.get("user_id")
+        user_id = int(user_id)
+        if not user_id:
+            return RedirectResponse("/login", status_code=303)
+
         # Validate VIN
         vin_no = vin_no.strip().upper()
-        if len(vin_no) != 17:
-            return templates.TemplateResponse(
-                "qr_generation.html",
-                {"request": request, "error": "VIN must be exactly 17 characters"},
-                status_code=400,
-            )
+
+        # Handle Date
+        from datetime import datetime
+        if not date:
+            date_val = datetime.now().date()
+        else:
+            try:
+                date_val = datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                date_val = datetime.now().date()
+
+        # Insert Data
+        from backend.services.data_manager import insert_raw_data
+        unique_id = insert_raw_data(vin_no, date_val, user_id)
+        print(unique_id)
 
         # Generate PDF
-        pdf_bytes = generate_pdf(vin_no, None)
+        pdf_bytes = generate_pdf(vin_no, unique_id)
         
-        # Save temporarily
-        os.makedirs("temp", exist_ok=True)
-        pdf_path = f"temp/QR_{vin_no}.pdf"
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
+        # Determine disposition based on action
+        if action == "print":
+            disposition = "inline"  # Opens in browser for printing
+        else:
+            disposition = f"attachment; filename=QR_Report_{vin_no}.pdf"
         
-        return FileResponse(
-            pdf_path,
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            filename=f"QR_{vin_no}.pdf",
+            headers={"Content-Disposition": disposition}
         )
     except Exception as e:
         return templates.TemplateResponse(
@@ -53,10 +73,26 @@ async def generate_qr(request: Request, vin_no: str = Form(...)):
 
 
 @router.post("/qr/generate-bulk")
-async def generate_bulk_qr(request: Request, vins: str = Form(...)):
+async def generate_bulk_qr(
+    request: Request, 
+    vins: str = Form(None),
+    date: str = Form(None),
+    action: str = Form("download")  # "download" or "print"
+):
     """Generate QR codes for multiple VINs as a bulk PDF"""
     try:
+        user_id = request.session.get("user_id")
+        if not user_id:
+            return RedirectResponse("/login", status_code=303)
+
         # Parse VINs
+        if not vins:
+             return templates.TemplateResponse(
+                "qr_generation.html",
+                {"request": request, "error": "Please provide VINs"},
+                status_code=400,
+            )
+            
         vin_list = [v.strip().upper() for v in vins.strip().split('\n') if v.strip()]
         
         # Validate VINs
@@ -67,30 +103,29 @@ async def generate_bulk_qr(request: Request, vins: str = Form(...)):
                 status_code=400,
             )
         
-        invalid_vins = [v for v in vin_list if len(v) != 17]
-        if invalid_vins:
-            return templates.TemplateResponse(
-                "qr_generation.html",
-                {
-                    "request": request,
-                    "error": f"Invalid VINs (must be 17 chars): {', '.join(invalid_vins[:3])}...",
-                },
-                status_code=400,
-            )
+        # Handle Date
+        from datetime import datetime
+        if not date:
+            date_val = datetime.now().date()
+        else:
+            try:
+                date_val = datetime.strptime(date, "%Y-%m-%d").date()
+            except ValueError:
+                date_val = datetime.now().date()
         
         # Generate bulk PDF
-        pdf_bytes = generate_bulk_pdf(vin_list)
+        pdf_bytes = generate_bulk_pdf(vin_list, date_val, user_id)
         
-        # Save temporarily
-        os.makedirs("temp", exist_ok=True)
-        pdf_path = f"temp/QR_Bulk_{len(vin_list)}_codes.pdf"
-        with open(pdf_path, "wb") as f:
-            f.write(pdf_bytes)
+        # Determine disposition based on action
+        if action == "print":
+            disposition = "inline"  # Opens in browser for printing
+        else:
+            disposition = f"attachment; filename=QR_Bulk_{len(vin_list)}_codes.pdf"
         
-        return FileResponse(
-            pdf_path,
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
             media_type="application/pdf",
-            filename=f"QR_Bulk_{len(vin_list)}_codes.pdf",
+            headers={"Content-Disposition": disposition}
         )
     except Exception as e:
         return templates.TemplateResponse(
