@@ -297,6 +297,22 @@
     </div>
 
     <script>
+        // Intercept Enter key on VIN input to trigger Print action
+        document.getElementById('vin_no').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // Find the print button and trigger its click or submit logic
+                // Using requestSubmit on the form with the print button as the submitter
+                const printBtn = document.querySelector('button[name="action"][value="print"]');
+                if (printBtn) {
+                    // We cannot just click() because it might not trigger the submit event correctly for the handler
+                    // But the handler relies on 'submit' event. 
+                    // form.requestSubmit(submitter) is the modern way to do this.
+                    document.getElementById('singleVinForm').requestSubmit(printBtn);
+                }
+            }
+        });
+
         document.getElementById('singleVinForm').addEventListener('submit', function (e) {
             const vin = document.getElementById('vin_no').value.trim();
             const action = e.submitter.value;
