@@ -1,6 +1,7 @@
 from google.cloud import vision
 import os
 import cv2
+import io
 from PIL import Image
 
 class OCRClient:
@@ -10,13 +11,11 @@ class OCRClient:
         self.client = vision.ImageAnnotatorClient()
     
     def get_annotations(self, image_path):
-        image = cv2.imread(image_path)
-        _, encoded_image = cv2.imencode('.png', image)
-        content = encoded_image.tobytes()
-
-        # Send to Google Vision
+        with io.open(image_path, 'rb') as image_file:
+            content = image_file.read()
         response = self.client.text_detection(image=vision.Image(content=content))
-        return response.text_annotations
+        annotations = response.text_annotations
+        return annotations
 
 
 # if __name__ == '__main__':
