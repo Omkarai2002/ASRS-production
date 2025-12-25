@@ -7,6 +7,9 @@ from backend.models.inference import Inference
 from datetime import datetime, date
 from sqlalchemy import func, and_
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -49,10 +52,10 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
         
         # Apply date filters
         if from_dt:
-            reports_query = reports_query.filter(func.date(Report.createdAt) >= from_dt)
+            reports_query = reports_query.filter(Report.createdAt >= from_dt)
             inferences_query = inferences_query.filter(func.date(Inference.createdAt) >= from_dt)
         if to_dt:
-            reports_query = reports_query.filter(func.date(Report.createdAt) <= to_dt)
+            reports_query = reports_query.filter(Report.createdAt <= to_dt)
             inferences_query = inferences_query.filter(func.date(Inference.createdAt) <= to_dt)
         
         # Apply specific report filter if selected
@@ -92,7 +95,7 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
         today = date.today()
         reports_today = db.query(Report).filter(
             Report.user_id == user_id,
-            func.date(Report.createdAt) == today
+            Report.createdAt == today
         ).count()
         
         # Get all user's reports for dropdown filter
@@ -106,10 +109,13 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
         daily_data = []
         current_date = start_date
         while current_date <= end_date:
+            # For Report: createdAt is a Date column, so compare directly without func.date()
             day_reports = db.query(Report).filter(
                 Report.user_id == user_id,
-                func.date(Report.createdAt) == current_date
+                Report.createdAt == current_date
             ).count()
+            
+            # For Inference: createdAt is DateTime, so use func.date() to extract date part
             day_inferences = db.query(Inference).filter(
                 Inference.user_id == user_id,
                 func.date(Inference.createdAt) == current_date
@@ -120,7 +126,16 @@ def dashboard(request: Request, from_date: str = None, to_date: str = None, repo
                 "reports": day_reports,
                 "items": day_inferences
             })
+            
+            # Log for debugging
+            if day_reports > 0 or day_inferences > 0:
+                logger.info(f"User {user_id} on {current_date}: Reports={day_reports}, Items={day_inferences}")
+            
             current_date += timedelta(days=1)
+        
+        # Log final summary
+        total_days_with_data = sum(1 for d in daily_data if d["reports"] > 0 or d["items"] > 0)
+        logger.info(f"Dashboard: User {user_id} - Total Reports: {total_reports}, Total Inferences: {items_detected}, Days with data: {total_days_with_data}")
         
         system_status = "Active"
         

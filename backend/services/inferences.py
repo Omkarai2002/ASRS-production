@@ -12,6 +12,7 @@ from backend.services.detection import detect_vehicle
 from backend.models.inference import Inference
 from backend.services.data_manager import upload_result, get_record
 import logging
+from datetime import datetime
 
 # Hard Requirement: Set start method to 'spawn' to avoid CUDA/Torch issues with fork
 # force=True prevents errors if it was already set (e.g. by another module)
@@ -83,7 +84,8 @@ def process_single_image_pipeline(image_path, report_id, user_id, idx, total_fil
                 quantity=result.get("QUANTITY", 1),
                 vin_no=result.get("VIN_NO", ""),
                 exclusion=result.get("EXCLUSION", ""),
-                s3_obj_url=s3_url
+                s3_obj_url=s3_url,
+                createdAt=datetime.now()
             )
             upload_result(inference)
             saved_count += 1

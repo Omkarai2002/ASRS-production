@@ -4,6 +4,7 @@ from backend.database import SessionLocal
 from backend.models.report import Report
 from backend.models.inference import Inference
 from backend.models.user_settings import UserSettings
+from backend.services.data_manager import create_report as dm_create_report
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import APIRouter, Request, Form, UploadFile, File, BackgroundTasks
 from fastapi.templating import Jinja2Templates
@@ -252,15 +253,9 @@ def get_report(report_id: int):
 
 
 def create_report(report_name: str):
-    db = SessionLocal()
-    try:
-        report = Report(report_name=report_name)
-        db.add(report)
-        db.commit()
-        db.refresh(report)
-        return report.id
-    finally:
-        db.close()
+    # Use centralized data_manager.create_report to ensure createdAt and user linkage
+    # This wrapper keeps backward compatibility for any callers within this module
+    return dm_create_report(report_name)
 
 
 def delete_report(report_id: int):

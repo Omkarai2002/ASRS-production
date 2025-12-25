@@ -17,15 +17,24 @@ def get_record(unique_id: str):
         return session.execute(stmt).scalars().first()
 def get_reports_today():
     with SessionLocal() as session:
-        return session.query(Report).filter(func.date(Report.createdAt) == date.today()).all()
+        # Report.createdAt is a Date column, compare directly without func.date()
+        return session.query(Report).filter(Report.createdAt == date.today()).all()
 
 
 def create_report(report_name: str, user_id: int = None):
+    from datetime import date as _date
+    import logging
+    logger = logging.getLogger(__name__)
+    
     with SessionLocal() as session:
-        report = Report(report_name=report_name, user_id=user_id)
+        # Ensure createdAt is set so dashboard and filters pick up the new report immediately
+        created = _date.today()
+        report = Report(report_name=report_name, user_id=user_id, createdAt=created)
         session.add(report)
         session.commit()
         session.refresh(report)
+        
+        logger.info(f"✅ Report created - ID: {report.id}, Name: {report_name}, User: {user_id}, Date: {created}")
         return report.id
 
 
@@ -43,10 +52,15 @@ def get_report_details(report_id: int):
 
 
 def upload_result(inference_obj: Inference): 
+    import logging
+    logger = logging.getLogger(__name__)
+    
     with SessionLocal() as session:
         session.add(inference_obj)
         session.commit()
         session.refresh(inference_obj)
+        
+        logger.info(f"✅ Inference saved - ID: {inference_obj.id}, Report: {inference_obj.report_id}, User: {inference_obj.user_id}, CreatedAt: {inference_obj.createdAt}")
         return inference_obj
 
 def get_latest_unique_id(user_id: int):

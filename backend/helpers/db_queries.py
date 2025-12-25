@@ -159,7 +159,7 @@ def get_daily_statistics(db: Session, user_id: int, days: int = 30) -> List[Dict
         while current_date <= end_date:
             day_reports = db.query(Report).filter(
                 Report.user_id == user_id,
-                func.date(Report.createdAt) == current_date
+                Report.createdAt == current_date
             ).count()
             
             day_inferences = db.query(Inference).filter(
@@ -187,7 +187,7 @@ def get_total_statistics(db: Session, user_id: int) -> Dict[str, int]:
         total_inferences = db.query(Inference).filter(Inference.user_id == user_id).count()
         today_reports = db.query(Report).filter(
             Report.user_id == user_id,
-            func.date(Report.createdAt) == datetime.now().date()
+            Report.createdAt == datetime.now().date()
         ).count()
         
         return {
