@@ -313,16 +313,6 @@
             }
         });
 
-        // Auto-trigger print when VIN length is 10
-        document.getElementById('vin_no').addEventListener('input', function (e) {
-            if (this.value.length === 10) {
-                const printBtn = document.querySelector('button[name="action"][value="print"]');
-                if (printBtn) {
-                    document.getElementById('singleVinForm').requestSubmit(printBtn);
-                }
-            }
-        });
-
         document.getElementById('singleVinForm').addEventListener('submit', function (e) {
             const vin = document.getElementById('vin_no').value.trim();
             const action = e.submitter.value;
