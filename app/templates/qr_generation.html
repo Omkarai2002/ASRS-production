@@ -336,6 +336,11 @@
 
                         iframe.onload = function () {
                             setTimeout(() => {
+                                const vinInput = document.getElementById('vin_no');
+                                if (vinInput) {
+                                    vinInput.value = '';
+                                    vinInput.focus();
+                                }
                                 iframe.contentWindow.print();
                             }, 250);
                         };
