@@ -17,10 +17,22 @@ class AnnotationsParser:
             xs = [v.x for v in bbox.vertices if hasattr(v, 'x')]
             ys = [v.y for v in bbox.vertices if hasattr(v, 'y')]
             return (sum(xs)/len(xs), sum(ys)/len(ys)) if xs and ys else None
+        
+        def get_area(bbox):
+            if not bbox or not bbox.vertices: return 0.0
+            vertices = [v for v in bbox.vertices if hasattr(v, 'x') and hasattr(v, 'y')]
+            if len(vertices) < 3: return 0.0
+            area = 0.0
+            for i in range(len(vertices)):
+                j = (i + 1) % len(vertices)
+                area += vertices[i].x * vertices[j].y
+                area -= vertices[j].x * vertices[i].y
+            return abs(area) / 2.0
 
         for annotation in annotations:
             text = annotation.description
             coord = get_center(annotation.bounding_poly)
+            area = get_area(annotation.bounding_poly)
 
             # print('->', text)
 
@@ -47,6 +59,10 @@ class AnnotationsParser:
                         coord = ((at_coord[0]+coord[0])/2, (at_coord[1]+coord[1])/2)
                     else:
                         coord = at_coord or coord
+                    print("Combined:", combined)
+                    print("Area:", area)
+                    if area < 1000:
+                        continue
                     # print('|->', combined)
                     unique_ids.append((combined, coord))
                 is_at = False

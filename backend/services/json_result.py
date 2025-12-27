@@ -11,12 +11,13 @@ def build_result(image_name, records, detection):
         'EXCLUSION':             None
     }
 
-    if not detection:
-        output_template['EXCLUSION'] = "Empty Skid"
-    elif detection and not records:
-        output_template['EXCLUSION'] = "Sticker not found"
-    elif len(records) > 1:
-        output_template['EXCLUSION'] = "Multiple stickers detected"
+    if not records:
+        if not detection:
+            output_template['EXCLUSION'] = "Empty Skid"
+        elif detection:
+            output_template['EXCLUSION'] = "Sticker not found"
+        # elif len(records) > 1:
+        #     output_template['EXCLUSION'] = "Multiple stickers detected"
     else:
         output_template['EXCLUSION'] = ""
 
@@ -34,6 +35,7 @@ def build_result(image_name, records, detection):
             tmp['VIN_NO'] = record.vin_no
 
         final_output.append(tmp)
+        break # take the first entry only
     
     if not final_output:
         final_output.append(output_template)
