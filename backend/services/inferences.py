@@ -59,7 +59,7 @@ def process_user_report_sequentially(report_dir, report_id, user_id):
     try:
         # Get list of image files
         image_files = []
-        for image_name in os.listdir(report_dir):
+        for image_name in sorted(os.listdir(report_dir)):
             if not image_name.lower().endswith((".jpg", ".png", ".jpeg")):
                 continue
             image_files.append(os.path.join(report_dir, image_name))
