@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 
-CONF_THERSHOLD = 0.5
+CONF_THERSHOLD = 0.7
 AREA_THERSHOLD = 5000000
 
 _model = None
@@ -8,7 +8,7 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        _model = YOLO('trained_models/new_chasis_28_12.pt')
+        _model = YOLO('trained_models/latest_chasis_model.pt')
     return _model
 
 def detect_vehicle(image_path, records):
