@@ -8,7 +8,7 @@ _model = None
 def get_model():
     global _model
     if _model is None:
-        _model = YOLO('trained_models/esrsyolo11 1.pt')
+        _model = YOLO('trained_models/new_chasis_28_12.pt')
     return _model
 
 def detect_vehicle(image_path, records):
