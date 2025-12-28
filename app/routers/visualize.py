@@ -84,8 +84,8 @@ def visualize_reports(request: Request, search: str = None, date: str = None, re
                 Report.user_id == user_id  # ENSURE OWNER MATCHES
             ).first()
             if selected_report:
-                # Order by ID ascending to maintain sequential upload order
-                inferences = db.query(Inference).filter(Inference.report_id == selected_report_id).order_by(Inference.id.asc()).all()
+                # Order by image_name to maintain alphabetical/numerical order
+                inferences = db.query(Inference).filter(Inference.report_id == selected_report_id).order_by(Inference.image_name.asc()).all()
                 
                 # Calculate levels based on user settings and number of inferences
                 inferences_with_levels = []
@@ -321,10 +321,10 @@ def export_report_excel(request: Request, report_id: int):
         if not report:
             return {"error": "Report not found"}
         
-        # Order by ID ascending to maintain sequential upload order
+        # Order by image_name to maintain alphabetical/numerical order
         inferences = db.query(Inference).filter(
             Inference.report_id == report_id
-        ).order_by(Inference.id.asc()).all()
+        ).order_by(Inference.image_name.asc()).all()
         
         # Calculate summary statistics
         summary = calculate_summary_for_export(inferences)
