@@ -222,7 +222,8 @@
 
   .image-wrapper {
     width: 100%;
-    height: 200px;
+    min-height: 200px;
+    max-height: 400px;
     background: #f0f0f0;
     display: flex;
     align-items: center;
@@ -234,7 +235,8 @@
   .image-wrapper img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    max-height: 400px;
+    object-fit: contain;
   }
 
   .image-placeholder {
@@ -534,7 +536,7 @@
   .modal-image {
     width: 100%;
     height: 300px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 8px;
     background: #f0f0f0;
   }
@@ -564,6 +566,74 @@
     color: #333;
     font-size: 16px;
     margin-top: 5px;
+  }
+
+  .info-value input, .info-value select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+  }
+
+  .edit-btn, .save-btn, .cancel-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: 15px;
+    margin-right: 10px;
+    transition: background 0.3s;
+  }
+
+  .edit-btn {
+    background: #667eea;
+    color: white;
+  }
+
+  .edit-btn:hover {
+    background: #5568d3;
+  }
+
+  .save-btn {
+    background: #28a745;
+    color: white;
+  }
+
+  .save-btn:hover {
+    background: #218838;
+  }
+
+  .cancel-btn {
+    background: #6c757d;
+    color: white;
+  }
+
+  .cancel-btn:hover {
+    background: #5a6268;
+  }
+
+  .fetch-vin-btn {
+    padding: 5px 10px;
+    background: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 5px;
+  }
+
+  .fetch-vin-btn:hover {
+    background: #138496;
+  }
+
+  .modal-actions {
+    text-align: right;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
   }
 
   @media (max-width: 1200px) {
@@ -642,15 +712,42 @@
       <div class="modal-info">
         <div class="info-row">
           <div class="info-label">UNIQUE ID</div>
-          <div class="info-value" id="modalUniqueId">-</div>
+          <div class="info-value">
+            <span id="modalUniqueId" class="view-mode">-</span>
+            <div class="edit-mode" style="display:none;">
+              <input type="text" id="editUniqueId" style="width: calc(100% - 80px); display: inline-block;">
+              <button class="fetch-vin-btn" onclick="fetchVINManually()">🔄 Fetch</button>
+            </div>
+          </div>
         </div>
         <div class="info-row">
           <div class="info-label">VIN NUMBER</div>
-          <div class="info-value" id="modalVin">-</div>
+          <div class="info-value">
+            <span id="modalVin" class="view-mode">-</span>
+            <div class="edit-mode" style="display:none;">
+              <input type="text" id="editVin" style="width: calc(100% - 80px); display: inline-block;">
+              <button class="fetch-vin-btn" onclick="fetchUniqueIdManually()">🔄 Fetch</button>
+            </div>
+          </div>
         </div>
         <div class="info-row">
           <div class="info-label">QUANTITY</div>
-          <div class="info-value" id="modalQuantity">-</div>
+          <div class="info-value">
+            <span id="modalQuantity" class="view-mode">-</span>
+            <input type="number" id="editQuantity" class="edit-mode" style="display:none;" min="0">
+          </div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">EXCLUSION</div>
+          <div class="info-value">
+            <span id="modalExclusion" class="view-mode">-</span>
+            <select id="editExclusion" class="edit-mode" style="display:none;">
+              <option value="">Filled</option>
+              <option value="Empty Skid">Empty Skid</option>
+              <option value="Sticker not found">Sticker not found</option>
+              <option value="Multiple stickers detected">Multiple stickers detected</option>
+            </select>
+          </div>
         </div>
         <div class="info-row">
           <div class="info-label">IMAGE NAME</div>
@@ -660,11 +757,12 @@
           <div class="info-label">STATUS</div>
           <div class="info-value" id="modalStatus">-</div>
         </div>
-        <div class="info-row">
-          <div class="info-label">EXCLUSION</div>
-          <div class="info-value" id="modalExclusion">-</div>
-        </div>
       </div>
+    </div>
+    <div class="modal-actions">
+      <button class="edit-btn" id="editBtn" onclick="enableEdit()">✏️ Edit</button>
+      <button class="save-btn" id="saveBtn" onclick="saveChanges()" style="display:none;">💾 Save</button>
+      <button class="cancel-btn" id="cancelBtn" onclick="cancelEdit()" style="display:none;">❌ Cancel</button>
     </div>
   </div>
 </div>
@@ -886,15 +984,204 @@
     return summary;
   }
 
+  let currentInferenceId = null;
+  let originalValues = {};
+
   function openImageModal(id, uniqueId, vin, qty, imageName, status, exclusion, imageUrl) {
+    currentInferenceId = id;
+    
+    // Set image
     document.getElementById('modalImage').src = imageUrl || '/static/images/placeholder.svg';
+    
+    // Set view mode values
     document.getElementById('modalUniqueId').textContent = uniqueId || 'N/A';
     document.getElementById('modalVin').textContent = vin || 'N/A';
     document.getElementById('modalQuantity').textContent = qty || 'N/A';
     document.getElementById('modalImageName').textContent = imageName || 'N/A';
     document.getElementById('modalStatus').textContent = status;
     document.getElementById('modalExclusion').textContent = exclusion || 'None';
+    
+    // Set edit mode values
+    document.getElementById('editUniqueId').value = uniqueId || '';
+    document.getElementById('editVin').value = vin || '';
+    document.getElementById('editQuantity').value = qty || 0;
+    document.getElementById('editExclusion').value = exclusion || '';
+    
+    // Store original values for cancel
+    originalValues = { uniqueId, vin, qty, exclusion };
+    
+    // Reset to view mode
+    cancelEdit();
+    
     document.getElementById('imageModal').style.display = 'block';
+  }
+
+  function enableEdit() {
+    // Hide view mode
+    document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
+    // Show edit mode
+    document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'block');
+    
+    // Toggle buttons
+    document.getElementById('editBtn').style.display = 'none';
+    document.getElementById('saveBtn').style.display = 'inline-block';
+    document.getElementById('cancelBtn').style.display = 'inline-block';
+  }
+
+  function cancelEdit() {
+    // Show view mode
+    document.querySelectorAll('.view-mode').forEach(el => el.style.display = 'inline');
+    // Hide edit mode
+    document.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'none');
+    
+    // Toggle buttons
+    document.getElementById('editBtn').style.display = 'inline-block';
+    document.getElementById('saveBtn').style.display = 'none';
+    document.getElementById('cancelBtn').style.display = 'none';
+    
+    // Restore original values
+    if (originalValues) {
+      document.getElementById('editUniqueId').value = originalValues.uniqueId || '';
+      document.getElementById('editVin').value = originalValues.vin || '';
+      document.getElementById('editQuantity').value = originalValues.qty || 0;
+      document.getElementById('editExclusion').value = originalValues.exclusion || '';
+    }
+  }
+
+  async function autoFetchVIN(uniqueId) {
+    const vinInput = document.getElementById('editVin');
+    
+    // Clear VIN if unique_id is empty
+    if (!uniqueId || uniqueId.trim() === '' || uniqueId === 'N/A') {
+      vinInput.value = '';
+      return;
+    }
+    
+    // Show loading state
+    const originalValue = vinInput.value;
+    vinInput.value = 'Loading...';
+    
+    try {
+      const response = await fetch(`/get-record/${encodeURIComponent(uniqueId.trim())}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.error) {
+          console.log('Record not found:', data.error);
+          vinInput.value = originalValue; // Restore original if not found
+        } else if (data.vin_no) {
+          vinInput.value = data.vin_no;
+        } else {
+          vinInput.value = originalValue;
+        }
+      } else {
+        console.log('Failed to fetch VIN, status:', response.status);
+        vinInput.value = originalValue;
+      }
+    } catch (error) {
+      console.error('Error fetching VIN:', error);
+      vinInput.value = originalValue;
+    }
+  }
+
+  async function autoFetchUniqueId(vinNo) {
+    const uniqueIdInput = document.getElementById('editUniqueId');
+    
+    // Clear unique_id if VIN is empty
+    if (!vinNo || vinNo.trim() === '' || vinNo === 'N/A') {
+      uniqueIdInput.value = '';
+      return;
+    }
+    
+    // Show loading state
+    const originalValue = uniqueIdInput.value;
+    uniqueIdInput.value = 'Loading...';
+    
+    try {
+      const response = await fetch(`/get-record-by-vin/${encodeURIComponent(vinNo.trim())}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.error) {
+          console.log('Record not found:', data.error);
+          uniqueIdInput.value = originalValue; // Restore original if not found
+        } else if (data.unique_id) {
+          uniqueIdInput.value = data.unique_id;
+        } else {
+          uniqueIdInput.value = originalValue;
+        }
+      } else {
+        console.log('Failed to fetch Unique ID, status:', response.status);
+        uniqueIdInput.value = originalValue;
+      }
+    } catch (error) {
+      console.error('Error fetching Unique ID:', error);
+      uniqueIdInput.value = originalValue;
+    }
+  }
+
+  function fetchVINManually() {
+    const uniqueId = document.getElementById('editUniqueId').value;
+    autoFetchVIN(uniqueId);
+  }
+
+  function fetchUniqueIdManually() {
+    const vinNo = document.getElementById('editVin').value;
+    autoFetchUniqueId(vinNo);
+  }
+
+  async function saveChanges() {
+    const uniqueId = document.getElementById('editUniqueId').value;
+    const vinNo = document.getElementById('editVin').value;
+    const quantity = parseInt(document.getElementById('editQuantity').value);
+    const exclusion = document.getElementById('editExclusion').value;
+    
+    try {
+      const response = await fetch(`/visualize/update/${currentInferenceId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          unique_id: uniqueId,
+          vin_no: vinNo,
+          quantity: quantity,
+          exclusion: exclusion
+        })
+      });
+      
+      if (response.ok) {
+        // Update view mode values
+        document.getElementById('modalUniqueId').textContent = uniqueId || 'N/A';
+        document.getElementById('modalVin').textContent = vinNo || 'N/A';
+        document.getElementById('modalQuantity').textContent = quantity || 'N/A';
+        document.getElementById('modalExclusion').textContent = exclusion || 'None';
+        
+        // Update original values
+        originalValues = { uniqueId, vin: vinNo, qty: quantity, exclusion };
+        
+        // Switch back to view mode
+        cancelEdit();
+        
+        // Reload the current report to reflect changes in the grid
+        const reportId = new URLSearchParams(window.location.search).get('report');
+        if (reportId) {
+          // Find the active report element
+          const activeReport = document.querySelector('.report-item.active');
+          if (activeReport) {
+            loadReport(reportId, activeReport);
+          } else {
+            // Just reload the page if we can't find the element
+            window.location.reload();
+          }
+        }
+        
+        alert('Changes saved successfully!');
+      } else {
+        alert('Failed to save changes. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Error saving changes: ' + error.message);
+    }
   }
 
   function closeImageModal() {

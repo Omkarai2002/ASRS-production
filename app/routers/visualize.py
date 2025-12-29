@@ -4,7 +4,8 @@ from backend.database import SessionLocal
 from backend.models.report import Report
 from backend.models.inference import Inference
 from backend.models.user_settings import UserSettings
-from backend.services.data_manager import create_report as dm_create_report
+from backend.models.raw_data import RawData
+from backend.services.data_manager import create_report as dm_create_report, get_record
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import APIRouter, Request, Form, UploadFile, File, BackgroundTasks
 from fastapi.templating import Jinja2Templates
@@ -226,6 +227,133 @@ def get_report_details_api(request: Request, report_id: int):
     except Exception as e:
         logger.error(f"Error in get_report_details_api: {str(e)}")
         return {"error": f"Error loading report details."}
+    finally:
+        if db:
+            db.close()
+
+@router.get("/get-record/{unique_id}")
+def get_record_by_id(request: Request, unique_id: str):
+    """Fetch record details by unique_id - with user_id security check"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"error": "Unauthorized"}
+    
+    db = None
+    try:
+        logger.info(f"User {user_id} fetching record for unique_id: {unique_id}")
+        db = get_db_session()
+        
+        # Query RawData by unique_id AND user_id for security
+        record = db.query(RawData).filter(
+            RawData.unique_id == unique_id,
+            RawData.user_id == user_id
+        ).first()
+        
+        if record:
+            logger.info(f"Record found: unique_id={record.unique_id}, vin_no={record.vin_no}")
+            return {
+                "unique_id": record.unique_id,
+                "vin_no": record.vin_no,
+                "quantity": getattr(record, 'quantity', 1)
+            }
+        logger.warning(f"Record not found for unique_id: {unique_id}, user_id: {user_id}")
+        return {"error": "Record not found"}
+    except Exception as e:
+        logger.error(f"Error fetching record {unique_id}: {str(e)}")
+        return {"error": str(e)}
+    finally:
+        if db:
+            db.close()
+
+@router.get("/get-record-by-vin/{vin_no}")
+def get_record_by_vin(request: Request, vin_no: str):
+    """Fetch record details by VIN number - with user_id security check"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"error": "Unauthorized"}
+    
+    db = None
+    try:
+        logger.info(f"User {user_id} fetching record for vin_no: {vin_no}")
+        db = get_db_session()
+        
+        # Query RawData by vin_no AND user_id for security
+        record = db.query(RawData).filter(
+            RawData.vin_no == vin_no,
+            RawData.user_id == user_id
+        ).first()
+        
+        if record:
+            logger.info(f"Record found: unique_id={record.unique_id}, vin_no={record.vin_no}")
+            return {
+                "unique_id": record.unique_id,
+                "vin_no": record.vin_no,
+                "quantity": getattr(record, 'quantity', 1)
+            }
+        logger.warning(f"Record not found for vin_no: {vin_no}, user_id: {user_id}")
+        return {"error": "Record not found"}
+    except Exception as e:
+        logger.error(f"Error fetching record by VIN {vin_no}: {str(e)}")
+        return {"error": str(e)}
+    finally:
+        if db:
+            db.close()
+
+@router.put("/visualize/update/{inference_id}")
+async def update_inference(request: Request, inference_id: int):
+    """Update inference details"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"error": "Unauthorized"}
+    
+    # Parse JSON body
+    body = await request.json()
+    unique_id = body.get("unique_id")
+    vin_no = body.get("vin_no")
+    quantity = body.get("quantity")
+    exclusion = body.get("exclusion")
+    
+    db = None
+    try:
+        db = get_db_session()
+        
+        # Get the inference and verify ownership
+        inference = db.query(Inference).filter(
+            Inference.id == inference_id,
+            Inference.user_id == user_id
+        ).first()
+        
+        if not inference:
+            return {"error": "Inference not found or unauthorized"}
+        
+        # Update fields if provided
+        if unique_id is not None:
+            inference.unique_id = unique_id
+        if vin_no is not None:
+            inference.vin_no = vin_no
+        if quantity is not None:
+            inference.quantity = quantity
+        if exclusion is not None:
+            inference.exclusion = exclusion
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Inference updated successfully",
+            "inference": {
+                "id": inference.id,
+                "unique_id": inference.unique_id,
+                "vin_no": inference.vin_no,
+                "quantity": inference.quantity,
+                "exclusion": inference.exclusion
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error updating inference {inference_id}: {str(e)}")
+        if db:
+            db.rollback()
+        return {"error": f"Failed to update: {str(e)}"}
     finally:
         if db:
             db.close()
